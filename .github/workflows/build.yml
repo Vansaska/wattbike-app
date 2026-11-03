@@ -53,7 +53,7 @@ jobs:
           cp app/build/outputs/apk/release/app-release.apk proton-workouts.apk
           gh release create "build-${{ github.run_number }}" proton-workouts.apk \
             --title "Build ${{ github.run_number }}" \
-            --notes "Download proton-workouts.apk below on your phone and open it to install." \
+            --notes "Download proton-workouts.apk below on your phone and open it to install. Built from ${{ github.sha }}." \
             --latest
 
       # Saves the build log to the ci-logs branch so it can be read without Actions access.
