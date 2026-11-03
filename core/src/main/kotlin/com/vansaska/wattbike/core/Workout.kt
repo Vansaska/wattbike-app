@@ -125,6 +125,7 @@ object DurationSerializer : KSerializer<Int> {
     }
 }
 
+@OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
 val WorkoutJson = Json {
     ignoreUnknownKeys = true
     explicitNulls = false
