@@ -37,6 +37,13 @@ jobs:
           printf '%s\n' "$APP_SIGNING_KEY" | tail -n +2 | tr -d '\r\n ' | base64 -d > "$RUNNER_TEMP/release.jks"
           echo "SIGNING_KEYSTORE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
           echo "SIGNING_PASSWORD=$PW" >> "$GITHUB_ENV"
+          # Diagnostics only: shape of the secret, never its contents. Expected: 2 lines, 23 and 3452 chars, 2588 bytes.
+          {
+            echo "secret lines: $(printf '%s\n' "$APP_SIGNING_KEY" | wc -l)"
+            printf '%s\n' "$APP_SIGNING_KEY" | awk '{print "line " NR " length " length($0)}' | head -5
+            echo "decoded keystore bytes: $(stat -c %s "$RUNNER_TEMP/release.jks")"
+            if keytool -list -keystore "$RUNNER_TEMP/release.jks" -storepass "$PW" >/dev/null 2>&1; then echo "keystore opens: yes"; else echo "keystore opens: NO"; fi
+          } | tee signing-check.txt
 
       - name: Build APK
         env:
@@ -64,6 +71,7 @@ jobs:
         run: |
           mkdir -p /tmp/ci-logs
           cp build.log /tmp/ci-logs/latest.log 2>/dev/null || echo "no build log" > /tmp/ci-logs/latest.log
+          cp signing-check.txt /tmp/ci-logs/ 2>/dev/null || true
           printf 'run=%s\nsha=%s\nstatus=%s\n' "${{ github.run_number }}" "${{ github.sha }}" "${{ job.status }}" > /tmp/ci-logs/status.txt
           cd /tmp/ci-logs
           git init -q -b ci-logs
