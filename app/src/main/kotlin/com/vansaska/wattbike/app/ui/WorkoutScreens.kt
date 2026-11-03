@@ -122,7 +122,10 @@ fun DetailScreen(vm: MainViewModel, id: String) {
                 Text(Durations.format(s.duration), modifier = Modifier.width(56.dp))
                 val wFrom = (s.fromPct * ftp / 100).roundToInt()
                 val wTo = (s.toPct * ftp / 100).roundToInt()
-                Text(if (s.isRamp) "$wFrom→$wTo W" else "$wFrom W", modifier = Modifier.width(96.dp))
+                Column(Modifier.width(96.dp)) {
+                    Text(if (s.isRamp) "$wFrom→$wTo W" else "$wFrom W")
+                    s.cadence?.let { Text("$it rpm", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                }
             }
         }
     }
@@ -153,6 +156,7 @@ class EditNode(
     to: String = "",
     times: String = "",
     label: String = "",
+    cadence: String = "",
     children: List<EditNode> = emptyList(),
 ) {
     val uid = uidCounter++
@@ -163,6 +167,7 @@ class EditNode(
     var to by mutableStateOf(to)
     var times by mutableStateOf(times)
     var label by mutableStateOf(label)
+    var cadence by mutableStateOf(cadence)
     val children = mutableStateListOf<EditNode>().apply { addAll(children) }
 
     fun toStep(where: String): Step {
@@ -175,15 +180,21 @@ class EditNode(
             return d
         }
         val lbl = label.trim().ifEmpty { null }
+        val cad = cadence.trim().takeIf { it.isNotEmpty() }?.let {
+            val c = it.toIntOrNull() ?: throw IllegalArgumentException("$where: cadence must be a number")
+            if (c !in 30..200) throw IllegalArgumentException("$where: cadence should be between 30 and 200 rpm")
+            c
+        }
         return when (kind) {
-            StepKind.STEADY -> Step.steady(dur(), num(power, "power"), lbl)
-            StepKind.RAMP -> Step.ramp(dur(), num(from, "start power"), num(to, "end power"), lbl)
+            StepKind.STEADY -> Step.steady(dur(), num(power, "power"), lbl, cad)
+            StepKind.RAMP -> Step.ramp(dur(), num(from, "start power"), num(to, "end power"), lbl, cad)
             StepKind.REPEAT -> {
                 if (children.isEmpty()) throw IllegalArgumentException("$where: repeat has no steps")
                 Step(
                     times = num(times, "repeat count").coerceAtLeast(1),
                     steps = children.mapIndexed { i, c -> c.toStep("$where, part ${i + 1}") },
                     label = lbl,
+                    cadence = cad,
                 )
             }
         }
@@ -191,13 +202,13 @@ class EditNode(
 
     companion object {
         fun from(s: Step): EditNode = when (s.kind) {
-            StepKind.STEADY -> EditNode(StepKind.STEADY, Durations.format(s.duration), power = (s.power ?: 50).toString(), label = s.label.orEmpty())
+            StepKind.STEADY -> EditNode(StepKind.STEADY, Durations.format(s.duration), power = (s.power ?: 50).toString(), label = s.label.orEmpty(), cadence = s.cadence?.toString().orEmpty())
             StepKind.RAMP -> EditNode(
                 StepKind.RAMP, Durations.format(s.duration),
-                from = (s.from ?: s.power ?: 50).toString(), to = (s.to ?: s.power ?: 50).toString(), label = s.label.orEmpty(),
+                from = (s.from ?: s.power ?: 50).toString(), to = (s.to ?: s.power ?: 50).toString(), label = s.label.orEmpty(), cadence = s.cadence?.toString().orEmpty(),
             )
             StepKind.REPEAT -> EditNode(
-                StepKind.REPEAT, times = (s.times ?: 1).toString(), label = s.label.orEmpty(),
+                StepKind.REPEAT, times = (s.times ?: 1).toString(), label = s.label.orEmpty(), cadence = s.cadence?.toString().orEmpty(),
                 children = (s.steps ?: emptyList()).map { from(it) },
             )
         }
@@ -358,8 +369,9 @@ private fun StepCard(
                     StepKind.REPEAT -> SmallField("Repeat ×", node.times, { node.times = it }, Modifier.weight(1f))
                 }
             }
-            Row(Modifier.padding(end = 8.dp)) {
-                SmallField("Label (optional)", node.label, { node.label = it }, Modifier.fillMaxWidth(), number = false)
+            Row(Modifier.padding(end = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                SmallField("Label (optional)", node.label, { node.label = it }, Modifier.weight(2f), number = false)
+                SmallField(if (node.kind == StepKind.REPEAT) "rpm (all parts)" else "Target rpm", node.cadence, { node.cadence = it }, Modifier.weight(1f))
             }
             if (node.kind == StepKind.REPEAT) {
                 Spacer(Modifier.height(8.dp))

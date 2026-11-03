@@ -57,10 +57,10 @@ object RouteGenerator {
                 if (s.avgPct > 75 && s.duration >= 40) {
                     val first = roundTo5(s.duration / 2)
                     val midPct = s.pctAt((s.start + first).toDouble())
-                    b.add(first, s.fromPct, midPct, s.label)
+                    b.add(first, s.fromPct, midPct, s.label, s.cadence)
                     b.add(s.duration - first, EASY_PCT, EASY_PCT, "Recover")
                 } else {
-                    b.add(s.duration, s.fromPct, s.toPct, s.label)
+                    b.add(s.duration, s.fromPct, s.toPct, s.label, s.cadence)
                 }
             }
             out += RouteOption(
@@ -126,7 +126,7 @@ object RouteGenerator {
         val out = mutableListOf<Segment>()
         for (s in segs) {
             val prev = out.lastOrNull()
-            if (prev != null && !prev.isRamp && !s.isRamp && prev.toPct == s.fromPct && prev.label == s.label) {
+            if (prev != null && !prev.isRamp && !s.isRamp && prev.toPct == s.fromPct && prev.label == s.label && prev.cadence == s.cadence) {
                 out[out.lastIndex] = prev.copy(duration = prev.duration + s.duration)
             } else {
                 out += s

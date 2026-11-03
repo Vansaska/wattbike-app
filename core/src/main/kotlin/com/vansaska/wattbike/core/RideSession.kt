@@ -76,6 +76,8 @@ class RideSession(
 
     val targetWatts: Int get() = (targetPct / 100.0 * ftp).roundToInt()
 
+    val targetCadence: Int? get() = if (planComplete) null else currentSegment?.cadence
+
     val secondsLeftInSegment: Int
         get() = currentSegment?.let { (it.end - elapsed).toInt().coerceAtLeast(0) } ?: 0
 

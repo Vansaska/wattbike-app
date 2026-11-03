@@ -104,7 +104,7 @@ fun RideScreen(vm: MainViewModel) {
                     Text(Durations.format(r.segmentLeft), fontSize = 56.sp, fontWeight = FontWeight.Bold)
                 }
                 r.nextLabel?.let { n ->
-                    Text("Next: $n${r.nextWatts?.let { " · $it W" } ?: ""}", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Next: $n${r.nextWatts?.let { " · $it W" } ?: ""}${r.nextCadence?.let { " · $it rpm" } ?: ""}", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -121,7 +121,13 @@ fun RideScreen(vm: MainViewModel) {
             BigStat("Power", p?.toString() ?: "–", "W", Modifier.weight(1f), col)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            BigStat("Cadence", r.cadence?.toString() ?: "–", "rpm", Modifier.weight(1f))
+            val tc = r.targetCadence
+            val cadCol = when {
+                tc == null || r.cadence == null -> MaterialTheme.colorScheme.onSurface
+                abs(r.cadence - tc) <= 5 -> Color(0xFF22C55E)
+                else -> Color(0xFFEAB308)
+            }
+            BigStat(if (tc != null) "Cadence · aim $tc" else "Cadence", r.cadence?.toString() ?: "–", "rpm", Modifier.weight(1f), cadCol)
             BigStat("Heart rate", r.heartRate?.toString() ?: "–", "bpm", Modifier.weight(1f))
         }
 

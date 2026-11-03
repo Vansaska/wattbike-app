@@ -133,4 +133,29 @@ class CoreTest {
         assertTrue("<ns3:Watts>200</ns3:Watts>" in tcx)
         assertTrue("Took a different route" in tcx)
     }
+
+    @Test fun cadenceTargets() {
+        val json = """
+            {"id":"c","name":"C","steps":[
+              {"duration":"5:00","power":60,"cadence":85},
+              {"times":2,"cadence":100,"steps":[
+                {"duration":"1:00","power":120},
+                {"duration":"1:00","power":50,"cadence":80}
+              ]},
+              {"duration":"5:00","power":50}
+            ]}
+        """
+        val w = WorkoutJson.decodeFromString(Workout.serializer(), json)
+        val segs = w.toSegments()
+        assertEquals(listOf(85, 100, 80, 100, 80, null), segs.map { it.cadence })
+        val plan = Plan(segs)
+        // Rerouting keeps cadence on kept efforts and drops it on generic easy riding.
+        val easier = RouteGenerator.options(plan, 330).first { it.title == "Same plan, easier" }
+        assertEquals(100, easier.segments.first().cadence)
+        val steady = RouteGenerator.options(plan, 330).first { it.title == "Steady endurance" }
+        assertNull(steady.segments.first().cadence)
+        val s = RideSession(w, 200)
+        assertEquals(85, s.targetCadence)
+        assertEquals(w, WorkoutJson.decodeFromString(Workout.serializer(), WorkoutJson.encodeToString(Workout.serializer(), w)))
+    }
 }

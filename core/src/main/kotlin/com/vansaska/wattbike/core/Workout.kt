@@ -36,6 +36,7 @@ enum class StepKind { STEADY, RAMP, REPEAT }
  *  - Steady:  {"duration": "5:00", "power": 90}
  *  - Ramp:    {"duration": "10:00", "from": 45, "to": 75}
  *  - Repeat:  {"times": 5, "steps": [ ... ]}
+ *  - Any step can add "cadence": 95 (target rpm).
  *
  * "type" is optional; it is inferred from which fields are present.
  * Durations can be seconds (300) or strings ("5:00", "1:00:00", "90s", "5m").
@@ -51,6 +52,8 @@ data class Step(
     val times: Int? = null,
     val steps: List<Step>? = null,
     val label: String? = null,
+    /** Optional target cadence in rpm. On a repeat, it applies to parts that don't set their own. */
+    val cadence: Int? = null,
 ) {
     val kind: StepKind
         get() = when (type?.lowercase()) {
@@ -71,11 +74,11 @@ data class Step(
         }
 
     companion object {
-        fun steady(duration: Int, power: Int, label: String? = null) =
-            Step(duration = duration, power = power, label = label)
+        fun steady(duration: Int, power: Int, label: String? = null, cadence: Int? = null) =
+            Step(duration = duration, power = power, label = label, cadence = cadence)
 
-        fun ramp(duration: Int, from: Int, to: Int, label: String? = null) =
-            Step(duration = duration, from = from, to = to, label = label)
+        fun ramp(duration: Int, from: Int, to: Int, label: String? = null, cadence: Int? = null) =
+            Step(duration = duration, from = from, to = to, label = label, cadence = cadence)
 
         fun repeat(times: Int, steps: List<Step>) = Step(times = times, steps = steps)
     }

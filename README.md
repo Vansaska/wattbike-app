@@ -43,7 +43,7 @@ Workouts edited on the phone are marked "edited" and are not overwritten by sync
   "steps": [
     { "duration": "10:00", "from": 45, "to": 75, "label": "Warm-up" },
     { "times": 5, "steps": [
-      { "duration": "3:00", "power": 115 },
+      { "duration": "3:00", "power": 115, "cadence": 100 },
       { "duration": "3:00", "power": 50, "label": "Recover" }
     ]},
     { "duration": "5:00", "power": 65 }
@@ -55,6 +55,10 @@ Workouts edited on the phone are marked "edited" and are not overwritten by sync
 - `duration` is `"m:ss"`, `"h:mm:ss"`, or a number of seconds.
 - A step with `times` + `steps` repeats; one with `from`/`to` is a ramp; otherwise steady.
 - `label` is optional; without one the zone name is shown.
+- `cadence` is an optional target in rpm, shown on the ride screen (green when within 5 rpm).
+  On a repeat block it applies to every part that doesn't set its own.
+- Power is held by the bike in ERG mode whatever your cadence, so the cadence target is guidance:
+  pedal slower and the resistance rises, faster and it falls.
 
 ## Development
 

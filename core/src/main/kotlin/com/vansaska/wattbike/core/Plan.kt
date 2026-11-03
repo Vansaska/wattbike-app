@@ -9,6 +9,8 @@ data class Segment(
     val fromPct: Double,
     val toPct: Double,
     val label: String,
+    /** Target cadence in rpm, if the workout sets one. */
+    val cadence: Int? = null,
 ) {
     val end: Int get() = start + duration
     val isRamp: Boolean get() = fromPct != toPct
@@ -29,9 +31,9 @@ class SegmentBuilder {
     private val out = mutableListOf<Segment>()
     private var t = 0
 
-    fun add(duration: Int, fromPct: Double, toPct: Double = fromPct, label: String? = null): SegmentBuilder {
+    fun add(duration: Int, fromPct: Double, toPct: Double = fromPct, label: String? = null, cadence: Int? = null): SegmentBuilder {
         if (duration <= 0) return this
-        out += Segment(t, duration, fromPct, toPct, label ?: defaultLabel(fromPct, toPct))
+        out += Segment(t, duration, fromPct, toPct, label ?: defaultLabel(fromPct, toPct), cadence)
         t += duration
         return this
     }
@@ -47,26 +49,26 @@ fun defaultLabel(fromPct: Double, toPct: Double): String = when {
 
 fun Workout.toSegments(): List<Segment> {
     val b = SegmentBuilder()
-    fun addSteps(steps: List<Step>, suffix: String) {
+    fun addSteps(steps: List<Step>, suffix: String, inheritedCadence: Int?) {
         for (s in steps) {
             when (s.kind) {
                 StepKind.STEADY -> {
                     val p = (s.power ?: 50).toDouble()
-                    b.add(s.duration, p, p, s.label?.let { it + suffix } ?: (defaultLabel(p, p) + suffix))
+                    b.add(s.duration, p, p, s.label?.let { it + suffix } ?: (defaultLabel(p, p) + suffix), s.cadence ?: inheritedCadence)
                 }
                 StepKind.RAMP -> {
                     val f = (s.from ?: s.power ?: 50).toDouble()
                     val to = (s.to ?: s.power ?: f.toInt()).toDouble()
-                    b.add(s.duration, f, to, s.label?.let { it + suffix } ?: (defaultLabel(f, to) + suffix))
+                    b.add(s.duration, f, to, s.label?.let { it + suffix } ?: (defaultLabel(f, to) + suffix), s.cadence ?: inheritedCadence)
                 }
                 StepKind.REPEAT -> {
                     val n = s.times ?: 1
-                    for (i in 1..n) addSteps(s.steps ?: emptyList(), if (n > 1) " ($i/$n)" else "")
+                    for (i in 1..n) addSteps(s.steps ?: emptyList(), if (n > 1) " ($i/$n)" else "", s.cadence ?: inheritedCadence)
                 }
             }
         }
     }
-    addSteps(steps, "")
+    addSteps(steps, "", null)
     return b.build()
 }
 
@@ -93,9 +95,9 @@ class Plan(val segments: List<Segment>) {
         for (s in segments) {
             if (s.end <= t) continue
             if (s.start >= t) {
-                b.add(s.duration, s.fromPct, s.toPct, s.label)
+                b.add(s.duration, s.fromPct, s.toPct, s.label, s.cadence)
             } else {
-                b.add(s.end - t, s.pctAt(t.toDouble()), s.toPct, s.label)
+                b.add(s.end - t, s.pctAt(t.toDouble()), s.toPct, s.label, s.cadence)
             }
         }
         return b.build()
