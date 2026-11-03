@@ -1,0 +1,74 @@
+name: Build app
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "workouts/**"
+      - "**.md"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Prepare signing key
+        env:
+          APP_SIGNING_KEY: ${{ secrets.APP_SIGNING_KEY }}
+        run: |
+          if [ -z "$APP_SIGNING_KEY" ]; then
+            echo "::warning::APP_SIGNING_KEY secret not set; this build uses a throwaway key and won't install over other builds."
+            exit 0
+          fi
+          PW=$(printf '%s\n' "$APP_SIGNING_KEY" | head -n1 | tr -d '\r ')
+          echo "::add-mask::$PW"
+          printf '%s\n' "$APP_SIGNING_KEY" | tail -n +2 | tr -d '\r\n ' | base64 -d > "$RUNNER_TEMP/release.jks"
+          echo "SIGNING_KEYSTORE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+          echo "SIGNING_PASSWORD=$PW" >> "$GITHUB_ENV"
+
+      - name: Build APK
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: |
+          set -o pipefail
+          chmod +x gradlew
+          ./gradlew :core:test :app:assembleRelease --no-daemon 2>&1 | tee build.log
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp app/build/outputs/apk/release/app-release.apk proton-workouts.apk
+          gh release create "build-${{ github.run_number }}" proton-workouts.apk \
+            --title "Build ${{ github.run_number }}" \
+            --notes "Download proton-workouts.apk below on your phone and open it to install." \
+            --latest
+
+      # Saves the build log to the ci-logs branch so it can be read without Actions access.
+      - name: Save build log
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/ci-logs
+          cp build.log /tmp/ci-logs/latest.log 2>/dev/null || echo "no build log" > /tmp/ci-logs/latest.log
+          printf 'run=%s\nsha=%s\nstatus=%s\n' "${{ github.run_number }}" "${{ github.sha }}" "${{ job.status }}" > /tmp/ci-logs/status.txt
+          cd /tmp/ci-logs
+          git init -q -b ci-logs
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add .
+          git commit -qm "Build ${{ github.run_number }}: ${{ job.status }}"
+          git push -qf "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" ci-logs

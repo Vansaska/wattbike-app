@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "workouts": [
+    {
+      "id": "endurance-45",
+      "name": "Endurance 45",
+      "description": "45 minutes of steady Zone 2 with a few short cadence lifts.",
+      "steps": [
+        { "duration": "8:00", "from": 45, "to": 65, "label": "Warm-up" },
+        { "times": 3, "steps": [
+          { "duration": "9:00", "power": 68 },
+          { "duration": "1:00", "power": 72, "label": "Lift" }
+        ]},
+        { "duration": "7:00", "from": 60, "to": 40, "label": "Cool down" }
+      ]
+    },
+    {
+      "id": "sweet-spot-3x10",
+      "name": "Sweet spot 3×10",
+      "description": "Three 10-minute blocks just under threshold with 5 minutes easy between.",
+      "steps": [
+        { "duration": "10:00", "from": 45, "to": 75, "label": "Warm-up" },
+        { "times": 3, "steps": [
+          { "duration": "10:00", "power": 90, "label": "Sweet spot" },
+          { "duration": "5:00", "power": 50, "label": "Recover" }
+        ]},
+        { "duration": "5:00", "from": 55, "to": 40, "label": "Cool down" }
+      ]
+    },
+    {
+      "id": "vo2-5x3",
+      "name": "VO2 max 5×3",
+      "description": "Five hard 3-minute efforts with equal recovery.",
+      "steps": [
+        { "duration": "10:00", "from": 45, "to": 75, "label": "Warm-up" },
+        { "duration": "1:00", "power": 100, "label": "Opener" },
+        { "duration": "4:00", "power": 50, "label": "Easy" },
+        { "times": 5, "steps": [
+          { "duration": "3:00", "power": 115, "label": "VO2 effort" },
+          { "duration": "3:00", "power": 50, "label": "Recover" }
+        ]},
+        { "duration": "6:00", "from": 55, "to": 40, "label": "Cool down" }
+      ]
+    }
+  ]
+}
