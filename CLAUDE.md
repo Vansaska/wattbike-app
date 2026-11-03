@@ -10,4 +10,5 @@
   `ci-logs` branch: `git fetch origin ci-logs && git show FETCH_HEAD:status.txt` and `git show FETCH_HEAD:latest.log`
   (the clone is single-branch, so the fetch lands in FETCH_HEAD, not origin/ci-logs).
 - Maven Central sometimes returns 429 through the sandbox proxy; retry Gradle with `--max-workers=1`.
-- The release signing key is in the GitHub secret `APP_SIGNING_KEY` (line 1: password, line 2: base64 PKCS12, alias `wattbike`). Never commit it.
+- The release signing key is in GitHub secrets: `APP_SIGNING_KEY` (base64 PKCS12, alias `wattbike`) and `APP_SIGNING_PASSWORD`. Never commit either.
+  The workflow writes `signing-check.txt` (shape only, no secrets) to the `ci-logs` branch.

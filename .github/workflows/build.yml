@@ -27,23 +27,34 @@ jobs:
       - name: Prepare signing key
         env:
           APP_SIGNING_KEY: ${{ secrets.APP_SIGNING_KEY }}
+          APP_SIGNING_PASSWORD: ${{ secrets.APP_SIGNING_PASSWORD }}
         run: |
           if [ -z "$APP_SIGNING_KEY" ]; then
             echo "::warning::APP_SIGNING_KEY secret not set; this build uses a throwaway key and won't install over other builds."
             exit 0
           fi
-          PW=$(printf '%s\n' "$APP_SIGNING_KEY" | head -n1 | tr -d '\r ')
+          if [ -n "$APP_SIGNING_PASSWORD" ]; then
+            # APP_SIGNING_KEY is the base64 keystore; the password is its own secret.
+            PW=$(printf '%s' "$APP_SIGNING_PASSWORD" | tr -d '\r\n ')
+            printf '%s' "$APP_SIGNING_KEY" | tr -d '\r\n ' | base64 -d > "$RUNNER_TEMP/release.jks"
+          else
+            # Older two-line format: password, then base64 keystore.
+            PW=$(printf '%s\n' "$APP_SIGNING_KEY" | head -n1 | tr -d '\r ')
+            printf '%s\n' "$APP_SIGNING_KEY" | tail -n +2 | tr -d '\r\n ' | base64 -d > "$RUNNER_TEMP/release.jks"
+          fi
           echo "::add-mask::$PW"
-          printf '%s\n' "$APP_SIGNING_KEY" | tail -n +2 | tr -d '\r\n ' | base64 -d > "$RUNNER_TEMP/release.jks"
-          echo "SIGNING_KEYSTORE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
-          echo "SIGNING_PASSWORD=$PW" >> "$GITHUB_ENV"
-          # Diagnostics only: shape of the secret, never its contents. Expected: 2 lines, 23 and 3452 chars, 2588 bytes.
+          # Diagnostics only: shape of the secrets, never their contents.
           {
-            echo "secret lines: $(printf '%s\n' "$APP_SIGNING_KEY" | wc -l)"
-            printf '%s\n' "$APP_SIGNING_KEY" | awk '{print "line " NR " length " length($0)}' | head -5
+            echo "password secret set: $([ -n "$APP_SIGNING_PASSWORD" ] && echo yes || echo no)"
             echo "decoded keystore bytes: $(stat -c %s "$RUNNER_TEMP/release.jks")"
             if keytool -list -keystore "$RUNNER_TEMP/release.jks" -storepass "$PW" >/dev/null 2>&1; then echo "keystore opens: yes"; else echo "keystore opens: NO"; fi
           } | tee signing-check.txt
+          if ! grep -q "opens: yes" signing-check.txt; then
+            echo "::error::Signing key or password is wrong; see signing-check.txt"
+            exit 1
+          fi
+          echo "SIGNING_KEYSTORE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+          echo "SIGNING_PASSWORD=$PW" >> "$GITHUB_ENV"
 
       - name: Build APK
         env:
