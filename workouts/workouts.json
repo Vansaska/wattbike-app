@@ -2,6 +2,21 @@
   "version": 1,
   "workouts": [
     {
+      "id": "morning-leg-speed-8x85s",
+      "name": "Morning leg speed 8×1:25",
+      "description": "25 minutes. Short build, then eight 1:25 efforts at the top of Zone 3 with 45 seconds easy between, pedalled briskly at around 100 rpm. Long easy spin to finish.",
+      "steps": [
+        { "duration": "2:00", "power": 63, "label": "Warm-up", "cadence": 90 },
+        { "duration": "1:00", "power": 70, "label": "Warm-up", "cadence": 90 },
+        { "duration": "0:45", "power": 78, "label": "Warm-up", "cadence": 95 },
+        { "times": 8, "steps": [
+          { "duration": "1:25", "power": 85, "label": "Effort", "cadence": 100 },
+          { "duration": "0:45", "power": 50, "label": "Easy", "cadence": 85 }
+        ]},
+        { "duration": "3:55", "power": 50, "label": "Cool down", "cadence": 85 }
+      ]
+    },
+    {
       "id": "endurance-45",
       "name": "Endurance 45",
       "description": "45 minutes of steady Zone 2 with a few short cadence lifts.",
