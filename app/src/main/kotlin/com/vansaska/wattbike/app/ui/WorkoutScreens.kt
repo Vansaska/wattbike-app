@@ -76,7 +76,11 @@ fun DetailScreen(vm: MainViewModel, id: String) {
     var confirmDelete by remember { mutableStateOf(false) }
 
     LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 32.dp)) {
-        item { BackHeader(w.name, { vm.back() }) }
+        item {
+            BackHeader(w.name, { vm.back() }) {
+                Button(onClick = { vm.startRide(w) }) { Text("Start ride") }
+            }
+        }
         item {
             Text(
                 "${Durations.format(w.totalSeconds)} · ~${segs.kilojoules(ftp)} kJ at FTP $ftp W",

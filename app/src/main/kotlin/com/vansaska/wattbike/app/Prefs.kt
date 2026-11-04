@@ -49,6 +49,20 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("autoUpload", true)
         set(v) = sp.edit().putBoolean("autoUpload", v).apply()
 
+    /** Seconds of fixed-resistance "amnesty" at the start of a ride (0 = off). */
+    var amnestySeconds: Int
+        get() = sp.getInt("amnestySeconds", 120)
+        set(v) = sp.edit().putInt("amnestySeconds", v).apply()
+
+    /** Resistance during the amnesty, as a fraction of the bike's range. */
+    var amnestyLevel: Float
+        get() = sp.getFloat("amnestyLevel", 0.2f)
+        set(v) = sp.edit().putFloat("amnestyLevel", v).apply()
+
+    var voiceCues: Boolean
+        get() = sp.getBoolean("voiceCues", true)
+        set(v) = sp.edit().putBoolean("voiceCues", v).apply()
+
     companion object {
         const val DEFAULT_WORKOUTS_URL =
             "https://raw.githubusercontent.com/Vansaska/wattbike-app/main/workouts/workouts.json"

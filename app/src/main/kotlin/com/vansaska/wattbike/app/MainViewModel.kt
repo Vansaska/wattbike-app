@@ -58,6 +58,12 @@ data class RideUi(
     val workoutName: String,
     val ftp: Int,
     val events: List<String>,
+    val inAmnesty: Boolean,
+    val amnestyLeft: Int,
+    val amnestyLevelPct: Int,
+    val energyPct: Int,
+    val energyKj: Int,
+    val plannedKj: Int,
 )
 
 class MainViewModel(app: Application) : AndroidViewModel(app) {
@@ -70,6 +76,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val rideRepo = RideRepository(app)
     val bike = BikeConnection(app)
     val strava = StravaClient(prefs, http)
+    val cues = CuePlayer(app)
 
     private val _library = MutableStateFlow(workouts.load())
     val library: StateFlow<List<LibraryEntry>> = _library.asStateFlow()
@@ -210,7 +217,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun startRide(w: Workout) {
         rideJob?.cancel()
-        val s = RideSession(w, prefs.ftp)
+        val s = RideSession(w, prefs.ftp, amnestySeconds = prefs.amnestySeconds)
         session = s
         publish(s)
         go(Screen.Ride)
@@ -218,12 +225,26 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             while (isActive && s.state != RideState.FINISHED) {
                 val fresh = SystemClock.elapsedRealtime() - bike.lastDataAt < 3000
                 s.tick(System.currentTimeMillis(), if (fresh) bike.data.value else BikeData())
-                bike.setTargetPower(s.targetWatts)
+                applyTarget(s)
+                s.pollCue()?.let { if (prefs.voiceCues) cues.play(it) }
                 publish(s)
                 delay(1000)
             }
         }
     }
+
+    /** Fixed resistance during the warm-up amnesty (if the bike supports it), ERG otherwise. */
+    private fun applyTarget(s: RideSession) {
+        if (s.inAmnesty && bike.state.value.resistanceSupported != false) {
+            bike.setFixedResistance(prefs.amnestyLevel.toDouble())
+        } else {
+            bike.setTargetPower(s.targetWatts)
+        }
+    }
+
+    fun endAmnesty() { session?.let { it.endAmnesty(); applyTarget(it); publish(it) } }
+
+    fun testCue() { cues.play(com.vansaska.wattbike.core.Cue.SPEED_UP) }
 
     private fun publish(s: RideSession) {
         val d = bike.data.value
@@ -251,17 +272,33 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             workoutName = s.workoutName,
             ftp = s.ftp,
             events = s.events.map { it.text },
+            inAmnesty = s.inAmnesty && bike.state.value.resistanceSupported != false,
+            amnestyLeft = s.amnestyLeft,
+            amnestyLevelPct = Math.round(prefs.amnestyLevel * 100),
+            energyPct = s.energyPct,
+            energyKj = s.workKj.toInt(),
+            plannedKj = s.plannedKj,
         )
     }
 
-    fun adjustIntensity(delta: Int) { session?.let { it.adjustIntensity(delta); publish(it) } }
+    /** −/+ buttons: change the fixed resistance during the amnesty, otherwise the workout intensity. */
+    fun adjustIntensity(delta: Int) {
+        val s = session ?: return
+        if (s.inAmnesty && bike.state.value.resistanceSupported != false) {
+            prefs.amnestyLevel = (prefs.amnestyLevel + delta / 100f).coerceIn(0f, 1f)
+            applyTarget(s)
+        } else {
+            s.adjustIntensity(delta)
+        }
+        publish(s)
+    }
 
     fun pauseRide() { session?.let { it.pauseManually(System.currentTimeMillis()); publish(it) } }
 
     fun routeOptions(): List<RouteOption> = session?.routeOptions().orEmpty()
 
     fun takeRoute(o: RouteOption) {
-        session?.let { it.takeRoute(o); bike.setTargetPower(it.targetWatts); publish(it) }
+        session?.let { it.takeRoute(o); applyTarget(it); publish(it) }
     }
 
     fun finishRide() {
@@ -320,6 +357,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     override fun onCleared() {
+        cues.shutdown()
         bike.disconnect()
     }
 }

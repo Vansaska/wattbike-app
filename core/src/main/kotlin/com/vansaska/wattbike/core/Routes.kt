@@ -107,7 +107,8 @@ object RouteGenerator {
     }
 
     private fun genericCooldown(total: Int, @Suppress("UNUSED_PARAMETER") from: Double): Int {
-        val len = (total / 5).coerceIn(120, 300)
+        // Short on purpose: a couple of easy minutes is enough after these efforts.
+        val len = (total / 6).coerceIn(90, 150)
         return (len / 30) * 30
     }
 

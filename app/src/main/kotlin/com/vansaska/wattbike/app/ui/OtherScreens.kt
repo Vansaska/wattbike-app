@@ -205,6 +205,33 @@ fun SettingsScreen(vm: MainViewModel) {
         }
         item { HorizontalDivider() }
         item {
+            Text("Riding", style = MaterialTheme.typography.titleSmall)
+            var amnesty by remember { mutableStateOf((vm.prefs.amnestySeconds / 60.0).let { if (it % 1.0 == 0.0) it.toInt().toString() else it.toString() }) }
+            var voice by remember { mutableStateOf(vm.prefs.voiceCues) }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(
+                    amnesty, { amnesty = it }, label = { Text("Warm-up amnesty (minutes)") }, singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.weight(1f),
+                )
+                TextButton(onClick = {
+                    val m = amnesty.replace(',', '.').toDoubleOrNull()
+                    if (m != null && m in 0.0..10.0) { vm.prefs.amnestySeconds = (m * 60).roundToInt(); vm.say("Saved") }
+                    else vm.say("Enter 0 to 10 minutes")
+                }) { Text("Save") }
+            }
+            Text(
+                "Fixed resistance at the start, so stopping to stretch doesn't make the bike surge. 0 turns it off. " +
+                    "Change the level with −/+ during the warm-up; it's remembered.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Text("Voice cues at each change", modifier = Modifier.weight(1f))
+                TextButton(onClick = { vm.testCue() }) { Text("Test") }
+                Switch(voice, { voice = it; vm.prefs.voiceCues = it })
+            }
+        }
+        item { HorizontalDivider() }
+        item {
             Text("Strava", style = MaterialTheme.typography.titleSmall)
             Text(stravaStatus, color = if (vm.strava.isConnected) Color(0xFF22C55E) else MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(6.dp))

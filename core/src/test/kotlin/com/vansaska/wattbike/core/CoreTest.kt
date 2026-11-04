@@ -3,6 +3,7 @@ package com.vansaska.wattbike.core
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -31,7 +32,7 @@ class CoreTest {
 
     @Test fun libraryParsesAndHasExpectedLengths() {
         val ss = library.first { it.id == "sweet-spot-3x10" }
-        assertEquals(60 * 60, ss.totalSeconds)
+        assertEquals(56 * 60, ss.totalSeconds)
         val segs = ss.toSegments()
         assertEquals(ss.totalSeconds, segs.last().end)
         assertEquals("Sweet spot (2/3)", segs[3].label)
@@ -157,5 +158,41 @@ class CoreTest {
         val s = RideSession(w, 200)
         assertEquals(85, s.targetCadence)
         assertEquals(w, WorkoutJson.decodeFromString(Workout.serializer(), WorkoutJson.encodeToString(Workout.serializer(), w)))
+    }
+
+    @Test fun amnestyCuesAndEnergy() {
+        val w = Workout("t", "T", steps = listOf(
+            Step.steady(150, 60),
+            Step.repeat(2, listOf(Step.steady(60, 100), Step.steady(60, 50))),
+            Step.ramp(90, 50, 40, "Cool down"),
+        ))
+        val s = RideSession(w, ftp = 200, amnestySeconds = 120)
+        var now = 0L
+        val pedal = BikeData(speedKmh = 30.0, cadenceRpm = 90.0, powerW = 120)
+        val cues = mutableListOf<Pair<Int, Cue>>()
+        repeat(w.totalSeconds + 5) {
+            s.tick(now, pedal); now += 1000
+            if (it == 30) assertTrue(s.inAmnesty)
+            s.pollCue()?.let { c -> cues += s.elapsed.toInt() to c }
+        }
+        assertFalse(s.inAmnesty)
+        assertEquals(
+            listOf(Cue.ERG_ON, Cue.SPEED_UP, Cue.EASE_OFF, Cue.LAST_ONE, Cue.EASE_OFF, Cue.COOL_DOWN, Cue.DONE),
+            cues.map { it.second },
+        )
+        // Cues come just before each change (150 s = first change).
+        assertTrue(cues[1].first in 147..149, "speed-up cue at ${cues[1].first}")
+        assertTrue(s.energyPct in 1..200)
+        assertEquals(w.toSegments().kilojoules(200), s.plannedKj)
+    }
+
+    @Test fun resistanceCommands() {
+        val range = assertNotNull(Ftms.parseResistanceRange(byteArrayOf(0, 0, 0xE8.toByte(), 0x03, 10, 0)))
+        assertEquals(Ftms.ResistanceRange(0, 1000, 10), range)
+        assertEquals(200, range.rawAt(0.2))
+        assertEquals(listOf(0x04, 0xC8, 0x00), Ftms.setTargetResistance(200, wide = true).map { it.toInt() and 0xFF })
+        assertEquals(listOf(0x04, 50), Ftms.setTargetResistance(50, wide = false).map { it.toInt() and 0xFF })
+        val f = assertNotNull(Ftms.parseFeatures(byteArrayOf(0, 0, 0, 0, 0x0C, 0, 0, 0)))
+        assertTrue(f.resistanceTarget && f.powerTarget)
     }
 }

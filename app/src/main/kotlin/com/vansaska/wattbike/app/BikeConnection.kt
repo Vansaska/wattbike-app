@@ -31,6 +31,8 @@ data class BikeState(
     val status: LinkStatus = LinkStatus.DISCONNECTED,
     val deviceName: String? = null,
     val hasControl: Boolean = false,
+    /** Whether the bike accepts a fixed resistance level (null until known). */
+    val resistanceSupported: Boolean? = null,
     val message: String? = null,
 )
 
@@ -68,9 +70,18 @@ class BikeConnection(private val context: Context) {
     private var busy = false
     private val opTimeout = Runnable { Log.w(tag, "GATT op timed out"); busy = false; nextOp() }
 
-    private var desiredWatts: Int? = null
-    private var sentWatts: Int? = null
-    private var lastPowerSentAt = 0L
+    /** What the bike should be doing: hold a power (ERG) or hold a resistance level. */
+    sealed interface Target {
+        data class Power(val watts: Int) : Target
+        data class Resistance(val fraction: Double) : Target
+    }
+
+    private var desired: Target? = null
+    private var sent: Target? = null
+    private var lastSentAt = 0L
+    private var range: Ftms.ResistanceRange? = null
+    private var wideResistance = false
+    private var triedWide = false
 
     val bluetoothEnabled: Boolean get() = adapter?.isEnabled == true
 
@@ -139,40 +150,57 @@ class BikeConnection(private val context: Context) {
         gatt?.let { runCatching { it.disconnect() }; runCatching { it.close() } }
         gatt = null
         controlPoint = null
-        sentWatts = null
+        sent = null
     }
 
     // ---------- control ----------
 
     /** Sets the ERG target. Sends at most once a second and only when the value changes. */
     fun setTargetPower(watts: Int) {
-        desiredWatts = watts
-        main.post { maybeSendPower() }
+        desired = Target.Power(watts)
+        main.post { maybeSend() }
+    }
+
+    /**
+     * Holds a fixed resistance, as a fraction (0..1) of the bike's range. Unlike ERG, this doesn't
+     * react to cadence, so stopping briefly doesn't make it surge.
+     */
+    fun setFixedResistance(fraction: Double) {
+        desired = Target.Resistance(fraction)
+        main.post { maybeSend() }
     }
 
     /** Tells the bike to stop holding a target (back to free riding). */
     fun releaseControl() {
-        desiredWatts = null
+        desired = null
         main.post {
             val g = gatt ?: return@post
             val cp = controlPoint ?: return@post
             enqueue { writeNow(g, cp, Ftms.reset()) }
-            sentWatts = null
+            sent = null
             update { it.copy(hasControl = false) }
         }
     }
 
-    private fun maybeSendPower() {
+    private fun maybeSend() {
         val g = gatt ?: return
         val cp = controlPoint ?: return
-        val w = desiredWatts ?: return
+        val t = desired ?: return
         if (!_state.value.hasControl) return
         val now = SystemClock.elapsedRealtime()
-        if (w == sentWatts && now - lastPowerSentAt < 15_000) return // resend now and then in case it was missed
-        if (now - lastPowerSentAt < 1000) return
-        lastPowerSentAt = now
-        sentWatts = w
-        enqueue { writeNow(g, cp, Ftms.setTargetPower(w)) }
+        if (t == sent && now - lastSentAt < 15_000) return // resend now and then in case it was missed
+        if (now - lastSentAt < 1000) return
+        lastSentAt = now
+        sent = t
+        val bytes = when (t) {
+            is Target.Power -> Ftms.setTargetPower(t.watts)
+            is Target.Resistance -> {
+                if (_state.value.resistanceSupported == false) return
+                val rg = range ?: Ftms.ResistanceRange(0, 200, 1)
+                Ftms.setTargetResistance(rg.rawAt(t.fraction), wideResistance)
+            }
+        }
+        enqueue { writeNow(g, cp, bytes) }
     }
 
     // ---------- GATT callback ----------
@@ -211,6 +239,8 @@ class BikeConnection(private val context: Context) {
             val cp = svc.getCharacteristic(Ftms.CONTROL_POINT)
             controlPoint = cp
             update { it.copy(status = LinkStatus.CONNECTED, message = null) }
+            svc.getCharacteristic(Ftms.FEATURE)?.let { c -> enqueue { g.readCharacteristic(c) } }
+            svc.getCharacteristic(Ftms.RESISTANCE_RANGE)?.let { c -> enqueue { g.readCharacteristic(c) } }
             if (data != null) enqueue { subscribe(g, data, BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE) }
             if (cp != null) {
                 enqueue { subscribe(g, cp, BluetoothGattDescriptor.ENABLE_INDICATION_VALUE) }
@@ -235,6 +265,18 @@ class BikeConnection(private val context: Context) {
             }
         }
 
+        override fun onCharacteristicRead(g: BluetoothGatt, c: BluetoothGattCharacteristic, value: ByteArray, status: Int) {
+            onRead(c, value.copyOf(), status)
+        }
+
+        @Deprecated("Used on Android 12 and older")
+        override fun onCharacteristicRead(g: BluetoothGatt, c: BluetoothGattCharacteristic, status: Int) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                @Suppress("DEPRECATION")
+                onRead(c, c.value?.copyOf() ?: ByteArray(0), status)
+            }
+        }
+
         override fun onCharacteristicChanged(g: BluetoothGatt, c: BluetoothGattCharacteristic, value: ByteArray) {
             handleValue(c, value)
         }
@@ -245,6 +287,25 @@ class BikeConnection(private val context: Context) {
                 @Suppress("DEPRECATION")
                 handleValue(c, c.value ?: return)
             }
+        }
+    }
+
+    private fun onRead(c: BluetoothGattCharacteristic, value: ByteArray, status: Int) {
+        main.post {
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                when (c.uuid) {
+                    Ftms.FEATURE -> Ftms.parseFeatures(value)?.let { f ->
+                        Log.i(tag, "Features: $f")
+                        update { it.copy(resistanceSupported = f.resistanceTarget) }
+                    }
+                    Ftms.RESISTANCE_RANGE -> Ftms.parseResistanceRange(value)?.let { rg ->
+                        Log.i(tag, "Resistance range: $rg")
+                        range = rg
+                        wideResistance = rg.max > 255
+                    }
+                }
+            }
+            opDone()
         }
     }
 
@@ -268,12 +329,28 @@ class BikeConnection(private val context: Context) {
             Ftms.OP_REQUEST_CONTROL -> if (ok) {
                 update { it.copy(hasControl = true, message = null) }
                 enqueue { writeNow(g, cp, Ftms.startOrResume()) }
-                sentWatts = null
-                lastPowerSentAt = 0
-                maybeSendPower()
+                sent = null
+                lastSentAt = 0
+                maybeSend()
             } else {
                 update { it.copy(hasControl = false, message = "Bike refused control ($text). Is another app connected?") }
                 main.postDelayed({ if (gatt == g) enqueue { writeNow(g, cp, Ftms.requestControl()) } }, 3000)
+            }
+            Ftms.OP_SET_TARGET_RESISTANCE -> if (!ok) {
+                Log.w(tag, "Set resistance failed: $text (wide=$wideResistance)")
+                if (text == "control not permitted") {
+                    update { it.copy(hasControl = false) }
+                    enqueue { writeNow(g, cp, Ftms.requestControl()) }
+                } else if (!triedWide) {
+                    // Try the other parameter size once before giving up.
+                    triedWide = true
+                    wideResistance = !wideResistance
+                    sent = null
+                    lastSentAt = 0
+                    main.postDelayed({ maybeSend() }, 300)
+                } else {
+                    update { it.copy(resistanceSupported = false) }
+                }
             }
             Ftms.OP_SET_TARGET_POWER -> if (!ok) {
                 Log.w(tag, "Set target power failed: $text")

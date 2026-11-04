@@ -21,4 +21,6 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+    // The tests read the workout library, so rerun them when it changes.
+    inputs.dir(rootProject.file("workouts"))
 }

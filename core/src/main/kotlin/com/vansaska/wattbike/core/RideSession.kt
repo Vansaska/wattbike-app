@@ -29,6 +29,8 @@ class RideSession(
     workout: Workout,
     val ftp: Int,
     private val sampleIntervalMs: Long = 5000,
+    /** Seconds at the start with a fixed resistance instead of ERG, so stopping to stretch doesn't make it surge. */
+    val amnestySeconds: Int = 0,
 ) {
     val workoutName: String = workout.name
     var plan: Plan = Plan.of(workout)
@@ -75,6 +77,49 @@ class RideSession(
         get() = (if (planComplete) minOf(plan.pctAt(elapsed), 50.0) else plan.pctAt(elapsed)) * intensity / 100.0
 
     val targetWatts: Int get() = (targetPct / 100.0 * ftp).roundToInt()
+
+    private var amnestyEnded = false
+
+    /** True during the free warm-up period at the start. */
+    val inAmnesty: Boolean
+        get() = !amnestyEnded && state != RideState.FINISHED && elapsed < amnestySeconds
+
+    val amnestyLeft: Int get() = if (inAmnesty) (amnestySeconds - elapsed).toInt().coerceAtLeast(0) else 0
+
+    fun endAmnesty() {
+        if (inAmnesty) {
+            amnestyEnded = true
+            events += RideEvent(elapsed.toInt(), "Warm-up amnesty ended early")
+        }
+    }
+
+    /** Planned work for the whole (possibly rerouted) plan, at 100% intensity. */
+    val plannedKj: Int get() = plan.segments.kilojoules(ftp)
+
+    /** Work done so far as a percentage of the plan's total. */
+    val energyPct: Int get() = if (plannedKj > 0) (workKj * 100 / plannedKj).roundToInt() else 0
+
+    private var cuedIndex = -1
+    private var doneCued = false
+    private var wasInAmnesty = amnestySeconds > 0
+
+    /** Returns a cue to speak now, at most once per change. Call once per tick. */
+    fun pollCue(): Cue? {
+        if (state != RideState.RUNNING) return null
+        if (wasInAmnesty && !inAmnesty) {
+            wasInAmnesty = false
+            return Cue.ERG_ON
+        }
+        if (planComplete) {
+            if (!doneCued) { doneCued = true; return Cue.DONE }
+            return null
+        }
+        val i = plan.indexAt(elapsed)
+        if (i < 0 || i == cuedIndex) return null
+        if (secondsLeftInSegment > CueRules.LEAD_SECONDS) return null
+        cuedIndex = i
+        return CueRules.cueFor(plan, i)
+    }
 
     val targetCadence: Int? get() = if (planComplete) null else currentSegment?.cadence
 
@@ -169,6 +214,7 @@ class RideSession(
     fun takeRoute(option: RouteOption) {
         val at = elapsed.toInt()
         plan = plan.replaceFrom(at, option.segments)
+        cuedIndex = -1
         events += RideEvent(at, "Took a different route: ${option.title}")
     }
 

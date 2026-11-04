@@ -6,41 +6,41 @@
       "name": "Wake-up 5",
       "description": "Five minutes, no warm-up needed: 90 seconds to get the legs going, then four 20-second bursts above threshold at high cadence, then a short spin down.",
       "steps": [
-        { "duration": "0:45", "from": 50, "to": 75, "label": "Wake the legs", "cadence": 90 },
-        { "duration": "0:45", "power": 85, "label": "Build", "cadence": 100 },
+        { "duration": "0:45", "from": 50, "to": 75, "label": "Wake the legs", "cadence": 80 },
+        { "duration": "0:45", "power": 85, "label": "Build", "cadence": 88 },
         { "times": 4, "steps": [
-          { "duration": "0:20", "power": 125, "label": "Burst", "cadence": 110 },
-          { "duration": "0:20", "power": 55, "label": "Breathe", "cadence": 90 }
+          { "duration": "0:20", "power": 125, "label": "Burst", "cadence": 95 },
+          { "duration": "0:20", "power": 55, "label": "Breathe", "cadence": 80 }
         ]},
-        { "duration": "0:50", "from": 60, "to": 45, "label": "Spin down", "cadence": 85 }
+        { "duration": "0:50", "from": 60, "to": 45, "label": "Spin down", "cadence": 75 }
       ]
     },
     {
       "id": "morning-leg-speed-8x85s",
       "name": "Morning leg speed 8×1:25",
-      "description": "25 minutes. Short build, then eight 1:25 efforts at the top of Zone 3 with 45 seconds easy between, pedalled briskly at around 100 rpm. Long easy spin to finish.",
+      "description": "22 minutes. Short build, then eight 1:25 efforts at the top of Zone 3 with 45 seconds easy between, at around 90 rpm. Brief spin-down to finish.",
       "steps": [
-        { "duration": "2:00", "power": 63, "label": "Warm-up", "cadence": 90 },
-        { "duration": "1:00", "power": 70, "label": "Warm-up", "cadence": 90 },
-        { "duration": "0:45", "power": 78, "label": "Warm-up", "cadence": 95 },
+        { "duration": "2:00", "power": 63, "label": "Warm-up", "cadence": 80 },
+        { "duration": "1:00", "power": 70, "label": "Warm-up", "cadence": 82 },
+        { "duration": "0:45", "power": 78, "label": "Warm-up", "cadence": 85 },
         { "times": 8, "steps": [
-          { "duration": "1:25", "power": 85, "label": "Effort", "cadence": 100 },
-          { "duration": "0:45", "power": 50, "label": "Easy", "cadence": 85 }
+          { "duration": "1:25", "power": 85, "label": "Effort", "cadence": 90 },
+          { "duration": "0:45", "power": 50, "label": "Easy", "cadence": 80 }
         ]},
-        { "duration": "3:55", "power": 50, "label": "Cool down", "cadence": 85 }
+        { "duration": "0:45", "from": 50, "to": 40, "label": "Cool down", "cadence": 75 }
       ]
     },
     {
       "id": "endurance-45",
-      "name": "Endurance 45",
-      "description": "45 minutes of steady Zone 2 with a few short cadence lifts.",
+      "name": "Endurance 40",
+      "description": "40 minutes of steady Zone 2 with a few short cadence lifts.",
       "steps": [
         { "duration": "8:00", "from": 45, "to": 65, "label": "Warm-up" },
         { "times": 3, "steps": [
-          { "duration": "9:00", "power": 68, "cadence": 90 },
-          { "duration": "1:00", "power": 72, "label": "Lift", "cadence": 105 }
+          { "duration": "9:00", "power": 68, "cadence": 82 },
+          { "duration": "1:00", "power": 72, "label": "Lift", "cadence": 92 }
         ]},
-        { "duration": "7:00", "from": 60, "to": 40, "label": "Cool down" }
+        { "duration": "2:00", "from": 60, "to": 40, "label": "Cool down" }
       ]
     },
     {
@@ -50,10 +50,10 @@
       "steps": [
         { "duration": "10:00", "from": 45, "to": 75, "label": "Warm-up" },
         { "times": 3, "steps": [
-          { "duration": "10:00", "power": 90, "label": "Sweet spot", "cadence": 90 },
+          { "duration": "10:00", "power": 90, "label": "Sweet spot", "cadence": 85 },
           { "duration": "5:00", "power": 50, "label": "Recover" }
         ]},
-        { "duration": "5:00", "from": 55, "to": 40, "label": "Cool down" }
+        { "duration": "1:00", "from": 50, "to": 40, "label": "Cool down" }
       ]
     },
     {
@@ -65,10 +65,10 @@
         { "duration": "1:00", "power": 100, "label": "Opener" },
         { "duration": "4:00", "power": 50, "label": "Easy" },
         { "times": 5, "steps": [
-          { "duration": "3:00", "power": 115, "label": "VO2 effort", "cadence": 100 },
+          { "duration": "3:00", "power": 115, "label": "VO2 effort", "cadence": 92 },
           { "duration": "3:00", "power": 50, "label": "Recover" }
         ]},
-        { "duration": "6:00", "from": 55, "to": 40, "label": "Cool down" }
+        { "duration": "1:30", "from": 50, "to": 40, "label": "Cool down" }
       ]
     }
   ]

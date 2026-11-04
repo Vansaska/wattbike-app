@@ -67,6 +67,49 @@ object Ftms {
         return byteArrayOf(OP_SET_TARGET_POWER.toByte(), (w and 0xFF).toByte(), ((w shr 8) and 0xFF).toByte())
     }
 
+    val RESISTANCE_RANGE: UUID = uuid16(0x2AD6)
+
+    /**
+     * Set Target Resistance Level. The spec's parameter is a UINT8 (0.1 units); some machines
+     * want a SINT16 instead, so [wide] sends two bytes.
+     */
+    fun setTargetResistance(raw: Int, wide: Boolean): ByteArray =
+        if (!wide) byteArrayOf(OP_SET_TARGET_RESISTANCE.toByte(), raw.coerceIn(0, 255).toByte())
+        else {
+            val v = raw.coerceIn(-32768, 32767)
+            byteArrayOf(OP_SET_TARGET_RESISTANCE.toByte(), (v and 0xFF).toByte(), ((v shr 8) and 0xFF).toByte())
+        }
+
+    data class Features(val resistanceTarget: Boolean, val powerTarget: Boolean)
+
+    /** Fitness Machine Feature (0x2ACC): 4 bytes of machine features, then 4 of target-setting features. */
+    fun parseFeatures(b: ByteArray): Features? {
+        if (b.size < 8) return null
+        val target = (b[4].toInt() and 0xFF) or ((b[5].toInt() and 0xFF) shl 8)
+        return Features(resistanceTarget = target and (1 shl 2) != 0, powerTarget = target and (1 shl 3) != 0)
+    }
+
+    data class ResistanceRange(val min: Int, val max: Int, val increment: Int) {
+        /** Raw level for a fraction (0..1) of the range, snapped to the increment. */
+        fun rawAt(fraction: Double): Int {
+            val f = fraction.coerceIn(0.0, 1.0)
+            val inc = increment.coerceAtLeast(1)
+            val steps = Math.round((max - min) * f / inc).toInt()
+            return (min + steps * inc).coerceIn(min, max)
+        }
+    }
+
+    /** Supported Resistance Level Range (0x2AD6): min SINT16, max SINT16, increment UINT16. */
+    fun parseResistanceRange(b: ByteArray): ResistanceRange? {
+        if (b.size < 6) return null
+        fun s16(i: Int) = ((b[i].toInt() and 0xFF) or ((b[i + 1].toInt() and 0xFF) shl 8)).let { if (it >= 0x8000) it - 0x10000 else it }
+        val inc = (b[4].toInt() and 0xFF) or ((b[5].toInt() and 0xFF) shl 8)
+        val min = s16(0)
+        val max = s16(2)
+        if (max <= min) return null
+        return ResistanceRange(min, max, inc)
+    }
+
     fun parseControlPointResponse(b: ByteArray): ControlPointResponse? {
         if (b.size < 3 || (b[0].toInt() and 0xFF) != OP_RESPONSE) return null
         return ControlPointResponse(b[1].toInt() and 0xFF, b[2].toInt() and 0xFF)
