@@ -74,6 +74,16 @@ fun SummaryScreen(vm: MainViewModel, id: String) {
         }
         item { StatsGrid(r) }
         item {
+            OutlinedButton(onClick = {
+                val f = vm.rideDataFile(id) ?: return@OutlinedButton
+                val uri = androidx.core.content.FileProvider.getUriForFile(context, context.packageName + ".files", f)
+                val send = Intent(Intent.ACTION_SEND).setType("application/json")
+                    .putExtra(Intent.EXTRA_STREAM, uri)
+                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                context.startActivity(Intent.createChooser(send, "Share ride data"))
+            }) { Text("Share ride data") }
+        }
+        item {
             when {
                 r.stravaActivityId != null -> {
                     Text("On Strava", color = Color(0xFF22C55E))
@@ -131,6 +141,7 @@ private fun StatsGrid(r: RideRecord) {
         "Cadence" to "${r.avgCadence} rpm",
         "Heart rate" to (r.avgHeartRate?.let { "$it bpm" } ?: "–"),
         "Distance" to "%.1f km".format(r.distanceM / 1000),
+        "Avg target" to "${r.samples.map { it.targetW }.average().let { if (it.isNaN()) 0 else it.roundToInt() }} W",
     )
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp)) {
@@ -208,7 +219,8 @@ fun SettingsScreen(vm: MainViewModel) {
             Text("Riding", style = MaterialTheme.typography.titleSmall)
             var amnesty by remember { mutableStateOf((vm.prefs.amnestySeconds / 60.0).let { if (it % 1.0 == 0.0) it.toInt().toString() else it.toString() }) }
             var voice by remember { mutableStateOf(vm.prefs.voiceCues) }
-            var chime by remember { mutableStateOf(vm.prefs.chimeCues) }
+            var sound by remember { mutableStateOf(vm.prefs.cueSound) }
+            var flash by remember { mutableStateOf(vm.prefs.flashCues) }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(
                     amnesty, { amnesty = it }, label = { Text("Warm-up amnesty (minutes)") }, singleLine = true,
@@ -225,12 +237,19 @@ fun SettingsScreen(vm: MainViewModel) {
                     "Change the level with −/+ during the warm-up; it's remembered.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                Text("Chime at each change", modifier = Modifier.weight(1f))
-                Switch(chime, { chime = it; vm.prefs.chimeCues = it })
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Sound at each change", modifier = Modifier.weight(1f))
+                for ((value, label) in listOf("chime" to "Chime", "beep" to "Beep", "none" to "None")) {
+                    if (sound == value) Button(onClick = {}) { Text(label) }
+                    else OutlinedButton(onClick = { sound = value; vm.prefs.cueSound = value }) { Text(label) }
+                }
             }
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                Text("Spoken cue after the chime", modifier = Modifier.weight(1f))
+                Text("Flash the screen at each change", modifier = Modifier.weight(1f))
+                Switch(flash, { flash = it; vm.prefs.flashCues = it })
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Text("Spoken cue after the sound", modifier = Modifier.weight(1f))
                 Switch(voice, { voice = it; vm.prefs.voiceCues = it })
             }
             Text("Test:", style = MaterialTheme.typography.labelMedium)

@@ -229,7 +229,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 val fresh = SystemClock.elapsedRealtime() - bike.lastDataAt < 3000
                 s.tick(System.currentTimeMillis(), if (fresh) bike.data.value else BikeData())
                 applyTarget(s)
-                s.pollCue()?.let { cues.play(it, prefs.chimeCues, prefs.voiceCues) }
+                s.pollCue()?.let { showCue(it) }
                 publish(s)
                 delay(1000)
             }
@@ -247,7 +247,29 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun endAmnesty() { session?.let { it.endAmnesty(); applyTarget(it); publish(it) } }
 
-    fun testCue(cue: com.vansaska.wattbike.core.Cue) { cues.play(cue, prefs.chimeCues, prefs.voiceCues) }
+    fun testCue(cue: com.vansaska.wattbike.core.Cue) { cues.play(cue, prefs.cueSound, prefs.voiceCues) }
+
+    private val _flash = MutableStateFlow<com.vansaska.wattbike.core.Cue?>(null)
+    /** Cue currently flashed full-screen on the ride screen. */
+    val flash: StateFlow<com.vansaska.wattbike.core.Cue?> = _flash.asStateFlow()
+    private var flashJob: Job? = null
+
+    private fun showCue(cue: com.vansaska.wattbike.core.Cue) {
+        cues.play(cue, prefs.cueSound, prefs.voiceCues)
+        if (!prefs.flashCues) return
+        _flash.value = cue
+        flashJob?.cancel()
+        flashJob = viewModelScope.launch { delay(2500); _flash.value = null }
+    }
+
+    /** Writes a ride's recorded data to a file that can be shared. */
+    fun rideDataFile(id: String): java.io.File? {
+        val r = ride(id) ?: return null
+        val dir = java.io.File(getApplication<Application>().cacheDir, "shared").apply { mkdirs() }
+        return java.io.File(dir, "ride-$id.json").apply {
+            writeText(com.vansaska.wattbike.core.WorkoutJson.encodeToString(RideRecord.serializer(), r))
+        }
+    }
 
     private fun publish(s: RideSession) {
         val d = bike.data.value

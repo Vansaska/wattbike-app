@@ -2,7 +2,9 @@ package com.vansaska.wattbike.app.ui
 
 import android.app.Activity
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -49,6 +51,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.vansaska.wattbike.app.LinkStatus
 import com.vansaska.wattbike.app.MainViewModel
+import com.vansaska.wattbike.core.Cue
 import com.vansaska.wattbike.core.Durations
 import com.vansaska.wattbike.core.RideState
 import com.vansaska.wattbike.core.RouteOption
@@ -192,6 +195,22 @@ fun RideScreen(vm: MainViewModel) {
             }
             OutlinedButton(onClick = { vm.pauseRide() }, enabled = r.state == RideState.RUNNING, modifier = Modifier.weight(1f).height(44.dp)) { Text("Pause", maxLines = 1) }
             OutlinedButton(onClick = { confirmFinish = true }, modifier = Modifier.weight(1f).height(44.dp)) { Text("Finish", maxLines = 1) }
+        }
+    }
+
+    // Full-screen flash at each change, readable out of the corner of your eye.
+    val flash by vm.flash.collectAsState()
+    flash?.let { cue ->
+        val bg = when (cue) {
+            Cue.SPEED_UP, Cue.LAST_ONE -> Color(0xFFF97316)
+            Cue.EASE_OFF, Cue.COOL_DOWN -> Color(0xFF3B82F6)
+            Cue.ERG_ON, Cue.DONE -> Color(0xFF22C55E)
+        }
+        Box(
+            Modifier.fillMaxSize().background(bg.copy(alpha = 0.92f)).clickable { },
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(cue.phrase.uppercase(), fontSize = 64.sp, fontWeight = FontWeight.Black, color = Color.White)
         }
     }
 

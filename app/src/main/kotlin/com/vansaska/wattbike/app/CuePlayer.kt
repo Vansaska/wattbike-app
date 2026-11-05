@@ -54,11 +54,12 @@ class CuePlayer(private val context: Context) {
 
     private fun key(cue: Cue) = cue.name.lowercase(Locale.ROOT)
 
-    /** Plays the cue's chime and/or its spoken phrase (chime first). */
-    fun play(cue: Cue, chime: Boolean, voice: Boolean) {
+    /** Plays the cue's sound ("chime", "beep" or "none") and/or its spoken phrase, sound first. */
+    fun play(cue: Cue, sound: String, voice: Boolean) {
+        val chime = sound == "chime" || sound == "beep"
         if (!chime && !voice) return
         audio.requestAudioFocus(focus)
-        if (chime && playClip(raw("chime_" + key(cue))) { if (voice) speak(cue) else audio.abandonAudioFocusRequest(focus) }) return
+        if (chime && playClip(raw(sound + "_" + key(cue))) { if (voice) speak(cue) else audio.abandonAudioFocusRequest(focus) }) return
         if (voice) speak(cue) else audio.abandonAudioFocusRequest(focus)
     }
 

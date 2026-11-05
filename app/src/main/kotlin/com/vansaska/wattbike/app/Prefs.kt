@@ -63,9 +63,14 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("voiceCues2", false)
         set(v) = sp.edit().putBoolean("voiceCues2", v).apply()
 
-    var chimeCues: Boolean
-        get() = sp.getBoolean("chimeCues", true)
-        set(v) = sp.edit().putBoolean("chimeCues", v).apply()
+    /** Sound at each change: "chime", "beep" or "none". */
+    var cueSound: String
+        get() = sp.getString("cueSound", null) ?: "chime"
+        set(v) = sp.edit().putString("cueSound", v).apply()
+
+    var flashCues: Boolean
+        get() = sp.getBoolean("flashCues", true)
+        set(v) = sp.edit().putBoolean("flashCues", v).apply()
 
     companion object {
         const val DEFAULT_WORKOUTS_URL =
