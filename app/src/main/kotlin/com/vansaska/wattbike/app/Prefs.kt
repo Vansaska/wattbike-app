@@ -60,8 +60,12 @@ class Prefs(context: Context) {
         set(v) = sp.edit().putFloat("amnestyLevel", v).apply()
 
     var voiceCues: Boolean
-        get() = sp.getBoolean("voiceCues", true)
-        set(v) = sp.edit().putBoolean("voiceCues", v).apply()
+        get() = sp.getBoolean("voiceCues2", false)
+        set(v) = sp.edit().putBoolean("voiceCues2", v).apply()
+
+    var chimeCues: Boolean
+        get() = sp.getBoolean("chimeCues", true)
+        set(v) = sp.edit().putBoolean("chimeCues", v).apply()
 
     companion object {
         const val DEFAULT_WORKOUTS_URL =

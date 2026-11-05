@@ -208,6 +208,7 @@ fun SettingsScreen(vm: MainViewModel) {
             Text("Riding", style = MaterialTheme.typography.titleSmall)
             var amnesty by remember { mutableStateOf((vm.prefs.amnestySeconds / 60.0).let { if (it % 1.0 == 0.0) it.toInt().toString() else it.toString() }) }
             var voice by remember { mutableStateOf(vm.prefs.voiceCues) }
+            var chime by remember { mutableStateOf(vm.prefs.chimeCues) }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(
                     amnesty, { amnesty = it }, label = { Text("Warm-up amnesty (minutes)") }, singleLine = true,
@@ -225,9 +226,22 @@ fun SettingsScreen(vm: MainViewModel) {
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                Text("Voice cues at each change", modifier = Modifier.weight(1f))
-                TextButton(onClick = { vm.testCue() }) { Text("Test") }
+                Text("Chime at each change", modifier = Modifier.weight(1f))
+                Switch(chime, { chime = it; vm.prefs.chimeCues = it })
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Text("Spoken cue after the chime", modifier = Modifier.weight(1f))
                 Switch(voice, { voice = it; vm.prefs.voiceCues = it })
+            }
+            Text("Test:", style = MaterialTheme.typography.labelMedium)
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                for ((label, cue) in listOf(
+                    "Speed up" to com.vansaska.wattbike.core.Cue.SPEED_UP,
+                    "Ease off" to com.vansaska.wattbike.core.Cue.EASE_OFF,
+                    "Last one" to com.vansaska.wattbike.core.Cue.LAST_ONE,
+                    "Cool down" to com.vansaska.wattbike.core.Cue.COOL_DOWN,
+                    "Done" to com.vansaska.wattbike.core.Cue.DONE,
+                )) OutlinedButton(onClick = { vm.testCue(cue) }) { Text(label, maxLines = 1) }
             }
         }
         item { HorizontalDivider() }

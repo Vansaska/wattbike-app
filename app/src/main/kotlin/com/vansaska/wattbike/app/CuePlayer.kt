@@ -50,32 +50,41 @@ class CuePlayer(private val context: Context) {
     }
 
     @SuppressLint("DiscouragedApi")
-    private fun clipFor(cue: Cue): Int =
-        context.resources.getIdentifier("cue_" + cue.name.lowercase(Locale.ROOT), "raw", context.packageName)
+    private fun raw(name: String): Int = context.resources.getIdentifier(name, "raw", context.packageName)
 
-    fun hasRecordedClips(): Boolean = Cue.entries.any { clipFor(it) != 0 }
+    private fun key(cue: Cue) = cue.name.lowercase(Locale.ROOT)
 
-    fun play(cue: Cue) {
+    /** Plays the cue's chime and/or its spoken phrase (chime first). */
+    fun play(cue: Cue, chime: Boolean, voice: Boolean) {
+        if (!chime && !voice) return
         audio.requestAudioFocus(focus)
-        val clip = clipFor(cue)
-        if (clip != 0) {
-            player?.release()
-            player = MediaPlayer.create(context, clip, attrs, audio.generateAudioSessionId())?.apply {
-                setOnCompletionListener {
-                    it.release()
-                    if (player === it) player = null
-                    audio.abandonAudioFocusRequest(focus)
-                }
-                start()
-            }
-            if (player != null) return
-        }
+        if (chime && playClip(raw("chime_" + key(cue))) { if (voice) speak(cue) else audio.abandonAudioFocusRequest(focus) }) return
+        if (voice) speak(cue) else audio.abandonAudioFocusRequest(focus)
+    }
+
+    private fun speak(cue: Cue) {
+        // A recorded voice clip (res/raw/cue_<name>) wins over the phone's text-to-speech.
+        if (playClip(raw("cue_" + key(cue))) { audio.abandonAudioFocusRequest(focus) }) return
         if (ttsReady) {
             tts.speak(cue.phrase, TextToSpeech.QUEUE_FLUSH, null, cue.name)
         } else {
-            Log.w(tag, "No clip and text-to-speech not ready for $cue")
+            Log.w(tag, "Text-to-speech not ready for $cue")
             audio.abandonAudioFocusRequest(focus)
         }
+    }
+
+    private fun playClip(id: Int, then: () -> Unit): Boolean {
+        if (id == 0) return false
+        player?.release()
+        val p = MediaPlayer.create(context, id, attrs, audio.generateAudioSessionId()) ?: return false
+        player = p
+        p.setOnCompletionListener {
+            it.release()
+            if (player === it) player = null
+            then()
+        }
+        p.start()
+        return true
     }
 
     fun shutdown() {

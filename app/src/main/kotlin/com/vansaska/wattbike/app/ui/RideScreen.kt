@@ -82,33 +82,34 @@ fun RideScreen(vm: MainViewModel) {
     }
     BackHandler { confirmFinish = true }
 
-    Row(
-        Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    Column(
+        Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        // ---------- left: where you are in the workout ----------
-        Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.SpaceBetween) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    r.workoutName, style = MaterialTheme.typography.titleSmall,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
-                )
-                Text(
-                    "${Durations.format(r.elapsed)} / ${Durations.format(r.totalSeconds)}",
-                    style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.size(10.dp))
-                val (txt, col) = when {
-                    bike.status != LinkStatus.CONNECTED -> "No bike" to Color(0xFFEF4444)
-                    !bike.hasControl -> "No control" to Accent
-                    r.inAmnesty -> "Fixed" to Color(0xFF3B82F6)
-                    else -> "ERG" to Green
-                }
-                Text(txt, color = col, style = MaterialTheme.typography.labelLarge)
+        // ---------- header ----------
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                r.workoutName, style = MaterialTheme.typography.titleSmall,
+                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
+            )
+            Text(
+                "${Durations.format(r.elapsed)} / ${Durations.format(r.totalSeconds)}",
+                style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.size(10.dp))
+            val (txt, col) = when {
+                bike.status != LinkStatus.CONNECTED -> "No bike" to Color(0xFFEF4444)
+                !bike.hasControl -> "No control" to Accent
+                r.inAmnesty -> "Fixed" to Color(0xFF3B82F6)
+                else -> "ERG" to Green
             }
+            Text(txt, color = col, style = MaterialTheme.typography.labelLarge)
+        }
 
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        // ---------- step + numbers ----------
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Card(Modifier.weight(1.15f)) {
+                Column(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     val banner = when {
                         r.state == RideState.WAITING -> "Start pedalling to begin"
                         r.state == RideState.PAUSED -> "Paused — pedal to carry on"
@@ -116,97 +117,81 @@ fun RideScreen(vm: MainViewModel) {
                         else -> null
                     }
                     if (r.inAmnesty) {
-                        Text("Warm-up: fixed resistance", style = MaterialTheme.typography.titleMedium, color = Color(0xFF3B82F6))
-                        Text(Durations.format(r.amnestyLeft), fontSize = 44.sp, fontWeight = FontWeight.Bold, lineHeight = 46.sp)
-                        Text(banner ?: "Stop to stretch whenever you like. ERG starts after this.",
-                            style = MaterialTheme.typography.bodySmall, color = banner?.let { Accent } ?: MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Warm-up: fixed resistance", style = MaterialTheme.typography.titleSmall, color = Color(0xFF3B82F6), maxLines = 1)
+                        Text(Durations.format(r.amnestyLeft), fontSize = 40.sp, fontWeight = FontWeight.Bold, lineHeight = 42.sp)
+                        Text(banner ?: "Stop to stretch whenever you like",
+                            style = MaterialTheme.typography.bodySmall, maxLines = 1,
+                            color = banner?.let { Accent } ?: MaterialTheme.colorScheme.onSurfaceVariant)
                     } else {
-                        Text(r.segmentLabel, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        if (!r.planComplete) Text(Durations.format(r.segmentLeft), fontSize = 44.sp, fontWeight = FontWeight.Bold, lineHeight = 46.sp)
+                        Text(r.segmentLabel, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(if (r.planComplete) "—" else Durations.format(r.segmentLeft), fontSize = 40.sp, fontWeight = FontWeight.Bold, lineHeight = 42.sp)
                         val nextText = r.nextLabel?.let { n ->
                             "Next: $n${r.nextWatts?.let { " · $it W" } ?: ""}${r.nextCadence?.let { " · $it rpm" } ?: ""}"
                         }
-                        Text(banner ?: nextText ?: " ", style = MaterialTheme.typography.bodySmall,
-                            color = banner?.let { Accent } ?: MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                        Text(banner ?: nextText ?: " ", style = MaterialTheme.typography.bodySmall, maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            color = banner?.let { Accent } ?: MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
-
-            ProfileGraph(r.segments, Modifier.fillMaxWidth().height(56.dp), position = r.elapsed)
-
-            Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Energy ${r.energyPct}%", style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
-                    Text("${r.energyKj} / ${r.plannedKj} kJ · ${Durations.format(r.workoutLeft)} left",
-                        style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Spacer(Modifier.height(4.dp))
-                LinearProgressIndicator(
-                    progress = { (r.energyPct / 100f).coerceIn(0f, 1f) },
-                    modifier = Modifier.fillMaxWidth().height(6.dp),
-                    color = Accent,
-                )
+            if (r.inAmnesty) {
+                BigStat("Resistance", "${r.amnestyLevelPct}", "%", Modifier.weight(1f), Color(0xFF3B82F6))
+            } else {
+                BigStat("Target", "${r.targetWatts}", "W", Modifier.weight(1f), Accent)
             }
+            val p = r.power
+            val powerCol = when {
+                p == null || r.inAmnesty -> MaterialTheme.colorScheme.onSurface
+                abs(p - r.targetWatts) <= maxOf(10, r.targetWatts / 15) -> Green
+                else -> Amber
+            }
+            BigStat("Power", p?.toString() ?: "–", "W", Modifier.weight(1f), powerCol)
+            val tc = r.targetCadence
+            val cadCol = when {
+                tc == null || r.cadence == null -> MaterialTheme.colorScheme.onSurface
+                abs(r.cadence - tc) <= 5 -> Green
+                else -> Amber
+            }
+            BigStat(if (tc != null) "rpm · aim $tc" else "Cadence", r.cadence?.toString() ?: "–", "rpm", Modifier.weight(1f), cadCol)
         }
 
-        // ---------- right: numbers and controls ----------
-        Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.SpaceBetween) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (r.inAmnesty) {
-                    BigStat("Resistance", "${r.amnestyLevelPct}", "%", Modifier.weight(1f), Color(0xFF3B82F6))
-                } else {
-                    BigStat("Target", "${r.targetWatts}", "W", Modifier.weight(1f), Accent)
-                }
-                val p = r.power
-                val col = when {
-                    p == null || r.inAmnesty -> MaterialTheme.colorScheme.onSurface
-                    abs(p - r.targetWatts) <= maxOf(10, r.targetWatts / 15) -> Green
-                    else -> Amber
-                }
-                BigStat("Power", p?.toString() ?: "–", "W", Modifier.weight(1f), col)
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                val tc = r.targetCadence
-                val cadCol = when {
-                    tc == null || r.cadence == null -> MaterialTheme.colorScheme.onSurface
-                    abs(r.cadence - tc) <= 5 -> Green
-                    else -> Amber
-                }
-                BigStat(if (tc != null) "Cadence · aim $tc" else "Cadence", r.cadence?.toString() ?: "–", "rpm", Modifier.weight(1f), cadCol)
-                BigStat("Heart rate", r.heartRate?.toString() ?: "–", "bpm", Modifier.weight(1f))
-            }
+        // ---------- graph: takes all the spare height ----------
+        ProfileGraph(r.segments, Modifier.fillMaxWidth().weight(1f), position = r.elapsed)
 
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilledTonalIconButton(onClick = { vm.adjustIntensity(-5) }, modifier = Modifier.size(48.dp)) { Icon(Icons.Default.Remove, "Easier") }
-                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
-                    if (r.inAmnesty) {
-                        Text("${r.amnestyLevelPct}%", style = MaterialTheme.typography.titleLarge)
-                        Text("warm-up resistance", style = MaterialTheme.typography.labelSmall)
-                    } else {
-                        Text("${r.intensity}%", style = MaterialTheme.typography.titleLarge)
-                        Text("intensity", style = MaterialTheme.typography.labelSmall)
-                    }
-                }
-                FilledTonalIconButton(onClick = { vm.adjustIntensity(5) }, modifier = Modifier.size(48.dp)) { Icon(Icons.Default.Add, "Harder") }
-            }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Energy ${r.energyPct}%", style = MaterialTheme.typography.labelLarge)
+            Spacer(Modifier.size(8.dp))
+            LinearProgressIndicator(
+                progress = { (r.energyPct / 100f).coerceIn(0f, 1f) },
+                modifier = Modifier.weight(1f).height(6.dp),
+                color = Accent,
+            )
+            Spacer(Modifier.size(8.dp))
+            Text("${r.energyKj} / ${r.plannedKj} kJ · ${Durations.format(r.workoutLeft)} left",
+                style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (r.inAmnesty) {
-                    Button(
-                        onClick = { vm.endAmnesty() },
-                        modifier = Modifier.weight(1.6f).height(48.dp),
-                    ) { Text("Start ERG now") }
-                } else {
-                    Button(
-                        onClick = { routes = vm.routeOptions() },
-                        enabled = !r.planComplete,
-                        modifier = Modifier.weight(1.6f).height(48.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3B82F6), contentColor = Color.White),
-                    ) { Text("Different route", maxLines = 1) }
-                }
-                OutlinedButton(onClick = { vm.pauseRide() }, enabled = r.state == RideState.RUNNING, modifier = Modifier.weight(1f).height(48.dp)) { Text("Pause", maxLines = 1) }
-                OutlinedButton(onClick = { confirmFinish = true }, modifier = Modifier.weight(1f).height(48.dp)) { Text("Finish", maxLines = 1) }
+        // ---------- controls ----------
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilledTonalIconButton(onClick = { vm.adjustIntensity(-5) }, modifier = Modifier.size(40.dp)) { Icon(Icons.Default.Remove, "Easier") }
+            Text(
+                if (r.inAmnesty) "${r.amnestyLevelPct}% res." else "${r.intensity}%",
+                style = MaterialTheme.typography.titleMedium,
+            )
+            FilledTonalIconButton(onClick = { vm.adjustIntensity(5) }, modifier = Modifier.size(40.dp)) { Icon(Icons.Default.Add, "Harder") }
+            Spacer(Modifier.size(4.dp))
+            if (r.inAmnesty) {
+                Button(onClick = { vm.endAmnesty() }, modifier = Modifier.weight(1.6f).height(44.dp)) { Text("Start ERG now", maxLines = 1) }
+            } else {
+                Button(
+                    onClick = { routes = vm.routeOptions() },
+                    enabled = !r.planComplete,
+                    modifier = Modifier.weight(1.6f).height(44.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3B82F6), contentColor = Color.White),
+                ) { Text("Different route", maxLines = 1) }
             }
+            OutlinedButton(onClick = { vm.pauseRide() }, enabled = r.state == RideState.RUNNING, modifier = Modifier.weight(1f).height(44.dp)) { Text("Pause", maxLines = 1) }
+            OutlinedButton(onClick = { confirmFinish = true }, modifier = Modifier.weight(1f).height(44.dp)) { Text("Finish", maxLines = 1) }
         }
     }
 

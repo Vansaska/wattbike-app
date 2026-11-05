@@ -108,6 +108,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val ride: StateFlow<RideUi?> = _ride.asStateFlow()
 
     init {
+        // Pick up new and changed workouts automatically every time the app opens.
+        sync(quiet = true)
         prefs.lastDeviceAddress?.let { if (bike.bluetoothEnabled && hasBluetoothPermissions(app)) bike.connect(it) }
     }
 
@@ -168,13 +170,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun workout(id: String): LibraryEntry? = _library.value.firstOrNull { it.workout.id == id }
 
-    fun sync() {
+    /** [quiet]: don't report "No changes" or network errors (used for the automatic sync at start-up). */
+    fun sync(quiet: Boolean = false) {
         if (_syncing.value) return
         _syncing.value = true
         viewModelScope.launch {
             runCatching { workouts.sync(prefs.workoutsUrl, _library.value) }
-                .onSuccess { _library.value = it.entries; say("Sync: ${it.message}") }
-                .onFailure { say("Sync failed: ${it.message}") }
+                .onSuccess { _library.value = it.entries; if (!quiet || it.message != "No changes") say("Workouts: ${it.message}") }
+                .onFailure { if (!quiet) say("Sync failed: ${it.message}") }
             _syncing.value = false
         }
     }
@@ -226,7 +229,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 val fresh = SystemClock.elapsedRealtime() - bike.lastDataAt < 3000
                 s.tick(System.currentTimeMillis(), if (fresh) bike.data.value else BikeData())
                 applyTarget(s)
-                s.pollCue()?.let { if (prefs.voiceCues) cues.play(it) }
+                s.pollCue()?.let { cues.play(it, prefs.chimeCues, prefs.voiceCues) }
                 publish(s)
                 delay(1000)
             }
@@ -244,7 +247,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun endAmnesty() { session?.let { it.endAmnesty(); applyTarget(it); publish(it) } }
 
-    fun testCue() { cues.play(com.vansaska.wattbike.core.Cue.SPEED_UP) }
+    fun testCue(cue: com.vansaska.wattbike.core.Cue) { cues.play(cue, prefs.chimeCues, prefs.voiceCues) }
 
     private fun publish(s: RideSession) {
         val d = bike.data.value

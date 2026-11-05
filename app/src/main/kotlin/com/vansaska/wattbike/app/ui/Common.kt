@@ -1,6 +1,9 @@
 package com.vansaska.wattbike.app.ui
 
+import android.app.Activity
+import android.content.pm.ActivityInfo
 import androidx.activity.compose.BackHandler
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -62,6 +65,13 @@ fun AppRoot(vm: MainViewModel) {
             }
         }
         val top = stack.last()
+        // Landscape on the bike; portrait for the ride report, when you pick the phone up.
+        val activity = LocalContext.current as? Activity
+        LaunchedEffect(top) {
+            activity?.requestedOrientation =
+                if (top is Screen.Summary) ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+                else ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        }
         BackHandler(enabled = stack.size > 1 && top != Screen.Ride) { vm.back() }
         Scaffold(snackbarHost = { SnackbarHost(snackbar) }) { pad ->
             Box(Modifier.fillMaxSize().padding(pad)) {
