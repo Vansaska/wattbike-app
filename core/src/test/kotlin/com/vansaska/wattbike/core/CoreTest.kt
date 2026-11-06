@@ -2,6 +2,7 @@ package com.vansaska.wattbike.core
 
 import java.io.File
 import kotlin.test.Test
+import kotlin.math.abs
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
@@ -183,7 +184,13 @@ class CoreTest {
         // Cues come just before each change (150 s = first change).
         assertTrue(cues[1].first in 147..149, "speed-up cue at ${cues[1].first}")
         assertTrue(s.energyPct in 1..200)
-        assertEquals(w.toSegments().kilojoules(200), s.plannedKj)
+        assertTrue(abs(w.toSegments().kilojoules(200) - s.plannedKj) <= 3, "planned ${s.plannedKj}")
+        // Energy is measured against the plan at the intensity actually ridden.
+        val s2 = RideSession(w, ftp = 200)
+        s2.adjustIntensity(-25)
+        var t = 0L
+        repeat(w.totalSeconds) { s2.tick(t, BikeData(cadenceRpm = 90.0, powerW = s2.targetWatts)); t += 1000 }
+        assertTrue(s2.energyPct in 97..103, "energy ${s2.energyPct}")
     }
 
     @Test fun resistanceCommands() {

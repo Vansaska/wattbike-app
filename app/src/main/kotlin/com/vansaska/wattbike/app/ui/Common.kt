@@ -95,12 +95,13 @@ fun ProfileGraph(
     segments: List<Segment>,
     modifier: Modifier = Modifier,
     position: Int? = null,
-    maxPct: Double = 130.0,
+    maxPct: Double = 60.0,
 ) {
     Canvas(modifier) {
         val total = segments.lastOrNull()?.end ?: return@Canvas
         if (total <= 0) return@Canvas
-        val top = maxOf(maxPct, segments.maxOf { it.maxPct } + 5)
+        // Scale to the workout's own peak so the bars use the full height.
+        val top = maxOf(maxPct, segments.maxOf { it.maxPct } * 1.08)
         fun x(t: Int) = t.toFloat() / total * size.width
         fun y(p: Double) = size.height - (p / top * size.height).toFloat()
         for (s in segments) {

@@ -94,7 +94,14 @@ class RideSession(
     }
 
     /** Planned work for the whole (possibly rerouted) plan, at 100% intensity. */
-    val plannedKj: Int get() = plan.segments.kilojoules(ftp)
+    /**
+     * Planned work for the ride as you're actually riding it: what was asked of you so far
+     * (at whatever intensity was set), plus the rest of the plan at the current intensity.
+     */
+    val plannedKj: Int
+        get() = (plannedSoFarKj + plan.remainingFrom(elapsed.toInt()).kilojoules(ftp) * intensity / 100.0).roundToInt()
+
+    private var plannedSoFarKj = 0.0
 
     /** Work done so far as a percentage of the plan's total. */
     val energyPct: Int get() = if (plannedKj > 0) (workKj * 100 / plannedKj).roundToInt() else 0
@@ -147,6 +154,7 @@ class RideSession(
             RideState.RUNNING -> {
                 elapsed += dt
                 distanceM += (data.speedKmh ?: 0.0) / 3.6 * dt
+                plannedSoFarKj += targetWatts * dt / 1000.0
                 workKj += (data.powerW ?: 0).coerceAtLeast(0) * dt / 1000.0
                 accumulate(data)
                 if (moving) {

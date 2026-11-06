@@ -5,6 +5,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -109,9 +110,9 @@ fun RideScreen(vm: MainViewModel) {
             Text(txt, color = col, style = MaterialTheme.typography.labelLarge)
         }
 
-        // ---------- step + numbers ----------
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Card(Modifier.weight(1.15f)) {
+        // ---------- step + numbers (all boxes the same height) ----------
+        Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Card(Modifier.weight(1.15f).fillMaxHeight()) {
                 Column(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     val banner = when {
                         r.state == RideState.WAITING -> "Start pedalling to begin"
@@ -239,8 +240,12 @@ fun RideScreen(vm: MainViewModel) {
 
 @Composable
 private fun BigStat(label: String, value: String, unit: String, modifier: Modifier, colour: Color = MaterialTheme.colorScheme.onSurface) {
-    Card(modifier) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+    Card(modifier.fillMaxHeight()) {
+        Column(
+            Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
             Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(value, fontSize = 34.sp, fontWeight = FontWeight.Bold, color = colour, lineHeight = 36.sp)
