@@ -6,7 +6,7 @@ class Prefs(context: Context) {
     private val sp = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
     var ftp: Int
-        get() = sp.getInt("ftp", 200)
+        get() = sp.getInt("ftp", 140)
         set(v) = sp.edit().putInt("ftp", v).apply()
 
     var workoutsUrl: String
