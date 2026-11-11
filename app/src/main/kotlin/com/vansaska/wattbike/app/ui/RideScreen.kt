@@ -233,6 +233,7 @@ fun RideContent(
     }
 
     Surface(color = Paper, contentColor = Ink, modifier = Modifier.fillMaxSize()) {
+      Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 12.dp)) {
             Row(Modifier.fillMaxWidth().weight(1f)) {
                 // Left: cadence, the number you control, on its colour signal.
@@ -260,14 +261,6 @@ fun RideContent(
                 }
                 // Right: where you are in the step.
                 Column(Modifier.weight(1f).fillMaxHeight().padding(start = 24.dp), verticalArrangement = Arrangement.Center) {
-                    if (problem != null) {
-                        Text(
-                            problem,
-                            fontFamily = InterTight, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color.White,
-                            modifier = Modifier.background(Color(0xFFC81E1E), RoundedCornerShape(12.dp)).padding(horizontal = 10.dp, vertical = 2.dp),
-                        )
-                        Spacer(Modifier.height(6.dp))
-                    }
                     Text(
                         buildAnnotatedString {
                             append(stepName)
@@ -329,6 +322,15 @@ fun RideContent(
                 Pill("finish", Modifier.weight(1f), onClick = onFinish)
             }
         }
+        if (problem != null) {
+            Text(
+                problem,
+                fontFamily = InterTight, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color.White,
+                modifier = Modifier.align(Alignment.TopEnd).padding(top = 10.dp, end = 14.dp)
+                    .background(Color(0xFFC81E1E), RoundedCornerShape(12.dp)).padding(horizontal = 10.dp, vertical = 2.dp),
+            )
+        }
+      }
     }
 }
 
