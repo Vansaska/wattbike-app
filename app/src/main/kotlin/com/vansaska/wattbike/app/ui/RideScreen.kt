@@ -260,6 +260,14 @@ fun RideContent(
                 }
                 // Right: where you are in the step.
                 Column(Modifier.weight(1f).fillMaxHeight().padding(start = 24.dp), verticalArrangement = Arrangement.Center) {
+                    if (problem != null) {
+                        Text(
+                            problem,
+                            fontFamily = InterTight, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color.White,
+                            modifier = Modifier.background(Color(0xFFC81E1E), RoundedCornerShape(12.dp)).padding(horizontal = 10.dp, vertical = 2.dp),
+                        )
+                        Spacer(Modifier.height(6.dp))
+                    }
                     Text(
                         buildAnnotatedString {
                             append(stepName)
@@ -282,14 +290,6 @@ fun RideContent(
                         },
                         fontFamily = InterTight, fontWeight = FontWeight.Medium, fontSize = 24.sp, letterSpacing = (-0.02).em, maxLines = 1,
                     )
-                    if (problem != null) {
-                        Spacer(Modifier.height(6.dp))
-                        Text(
-                            problem,
-                            fontFamily = InterTight, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color.White,
-                            modifier = Modifier.background(Color(0xFFC81E1E), RoundedCornerShape(12.dp)).padding(horizontal = 10.dp, vertical = 2.dp),
-                        )
-                    }
                 }
             }
 
