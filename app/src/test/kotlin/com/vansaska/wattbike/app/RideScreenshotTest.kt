@@ -16,10 +16,10 @@ import org.junit.Test
 class RideScreenshotTest {
     @get:Rule
     val paparazzi = Paparazzi(
-        // A typical modern phone held sideways: 2400×1080 at 420 dpi ≈ 914×411 dp.
+        // A typical modern phone held sideways, about 912×411 dp (rendered at 2x).
         deviceConfig = DeviceConfig.PIXEL_5.copy(
-            screenWidth = 2400, screenHeight = 1080, xdpi = 420, ydpi = 420,
-            density = Density.DPI_420, orientation = ScreenOrientation.LANDSCAPE,
+            screenWidth = 1824, screenHeight = 822, xdpi = 320, ydpi = 320,
+            density = Density.XHIGH, orientation = ScreenOrientation.LANDSCAPE,
         ),
         theme = "android:Theme.Material.NoActionBar",
     )
