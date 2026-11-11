@@ -220,7 +220,6 @@ fun SettingsScreen(vm: MainViewModel) {
             var amnesty by remember { mutableStateOf((vm.prefs.amnestySeconds / 60.0).let { if (it % 1.0 == 0.0) it.toInt().toString() else it.toString() }) }
             var voice by remember { mutableStateOf(vm.prefs.voiceCues) }
             var sound by remember { mutableStateOf(vm.prefs.cueSound) }
-            var flash by remember { mutableStateOf(vm.prefs.flashCues) }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(
                     amnesty, { amnesty = it }, label = { Text("Warm-up amnesty (minutes)") }, singleLine = true,
@@ -243,10 +242,6 @@ fun SettingsScreen(vm: MainViewModel) {
                     if (sound == value) Button(onClick = {}) { Text(label) }
                     else OutlinedButton(onClick = { sound = value; vm.prefs.cueSound = value }) { Text(label) }
                 }
-            }
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                Text("Flash the screen at each change", modifier = Modifier.weight(1f))
-                Switch(flash, { flash = it; vm.prefs.flashCues = it })
             }
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Text("Spoken cue after the sound", modifier = Modifier.weight(1f))

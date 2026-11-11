@@ -36,21 +36,25 @@ class RideScreenshotTest {
     private fun ui(
         cadence: Int?, aim: Int?, label: String, elapsed: Int = 580,
         state: RideState = RideState.RUNNING, amnesty: Boolean = false, power: Int? = 121, target: Int = 119,
+        left: Int = 52, duration: Int = 85,
     ) = RideUi(
         state = state, elapsed = elapsed, totalSeconds = 1310, segments = workout.toSegments(),
         segmentLabel = label, nextLabel = null, nextWatts = null, nextCadence = null, targetCadence = aim,
-        segmentLeft = 52, workoutLeft = 1310 - elapsed, targetWatts = target, intensity = 100,
+        segmentLeft = left, workoutLeft = 1310 - elapsed, targetWatts = target, intensity = 100,
         power = power, cadence = cadence, heartRate = null, planComplete = false,
         workoutName = workout.name, ftp = 140, events = emptyList(),
         inAmnesty = amnesty, amnestyLeft = 74, amnestyLevelPct = 20,
         energyPct = 54, energyKj = 77, plannedKj = 142,
+        segmentIndex = 9, segmentDuration = duration, amnestyTotal = 120,
     )
 
     @Test fun effortOnPace() = paparazzi.snapshot { RideContent(ui(89, 90, "Effort (4/8)"), problem = null) }
 
-    @Test fun easyTooSlow() = paparazzi.snapshot { RideContent(ui(71, 80, "Easy (4/8)", power = 72, target = 70), problem = null) }
+    @Test fun easyNear() = paparazzi.snapshot { RideContent(ui(74, 80, "Easy (4/8)", power = 72, target = 70, left = 30, duration = 45), problem = null) }
 
-    @Test fun effortTooFast() = paparazzi.snapshot { RideContent(ui(99, 90, "Effort (5/8)"), problem = null) }
+    @Test fun effortOff() = paparazzi.snapshot { RideContent(ui(99, 90, "Effort (5/8)", left = 80), problem = null) }
+
+    @Test fun effortNearlyOver() = paparazzi.snapshot { RideContent(ui(91, 90, "Effort (4/8)", left = 6), problem = null) }
 
     @Test fun warmUpAmnesty() = paparazzi.snapshot {
         RideContent(ui(78, 80, "Warm-up", elapsed = 46, amnesty = true, power = 84), problem = null)

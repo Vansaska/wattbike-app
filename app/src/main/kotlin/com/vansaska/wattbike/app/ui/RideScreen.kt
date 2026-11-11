@@ -12,6 +12,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -94,22 +95,28 @@ val InterTight = FontFamily(
 )
 
 /** How your cadence compares with the step's target. Drives the blob's colour. */
-enum class Pace { NONE, ON, SLOW, FAST }
+/** How close your cadence is to the step's target, Wattbike-style: green on pace, yellow near, red off. */
+enum class Pace { NONE, ON, NEAR, OFF }
 
-fun paceOf(cadence: Int?, aim: Int?): Pace = when {
-    aim == null || cadence == null || cadence < 20 -> Pace.NONE
-    abs(cadence - aim) <= 5 -> Pace.ON
-    cadence < aim -> Pace.SLOW
-    else -> Pace.FAST
+data class PaceReading(val pace: Pace, val word: String)
+
+fun paceOf(cadence: Int?, aim: Int?): PaceReading {
+    if (aim == null || cadence == null || cadence < 20) return PaceReading(Pace.NONE, "")
+    val diff = cadence - aim
+    return when {
+        abs(diff) <= 4 -> PaceReading(Pace.ON, "on pace")
+        abs(diff) <= 9 -> PaceReading(Pace.NEAR, if (diff < 0) "a bit faster" else "a bit slower")
+        else -> PaceReading(Pace.OFF, if (diff < 0) "speed up" else "ease off")
+    }
 }
 
-private data class BlobPalette(val ring: Color, val mid: Color, val core: Color, val hot: Color, val dot: Color, val word: String)
+private data class BlobPalette(val ring: Color, val mid: Color, val core: Color, val hot: Color, val dot: Color)
 
 private fun paletteFor(p: Pace) = when (p) {
-    Pace.ON -> BlobPalette(Color(0xFF14935E), Color(0xFF3FD46E), Color(0xFFD8F53A), Color(0xFFFFF27A), Color(0xFF14935E), "on pace")
-    Pace.SLOW -> BlobPalette(Color(0xFFB3123B), Color(0xFFFF4A1C), Color(0xFFFF9A3D), Color(0xFFFFD24A), Color(0xFFD8201C), "speed up")
-    Pace.FAST -> BlobPalette(Color(0xFF1E2E9E), Color(0xFF2E6BFF), Color(0xFF7FD8FF), Color(0xFFDDF6FF), Color(0xFF2E6BFF), "ease off")
-    Pace.NONE -> BlobPalette(Color(0xFF5B3BE8), Color(0xFFF06BE0), Color(0xFFFFE14A), Color(0xFFFF4A1C), Color(0xFF8A8A8A), "")
+    Pace.ON -> BlobPalette(Color(0xFF14935E), Color(0xFF3FD46E), Color(0xFFD8F53A), Color(0xFFFFF27A), Color(0xFF14935E))
+    Pace.NEAR -> BlobPalette(Color(0xFFD08A00), Color(0xFFFFC21A), Color(0xFFFFE95A), Color(0xFFFFF7B8), Color(0xFFE0A800))
+    Pace.OFF -> BlobPalette(Color(0xFFB3123B), Color(0xFFFF3B1C), Color(0xFFFF7A3D), Color(0xFFFFB84A), Color(0xFFD8201C))
+    Pace.NONE -> BlobPalette(Color(0xFF5B3BE8), Color(0xFFF06BE0), Color(0xFFFFE14A), Color(0xFFFF4A1C), Color(0xFF8A8A8A))
 }
 
 // ---------- screen ----------
@@ -153,22 +160,6 @@ fun RideScreen(vm: MainViewModel) {
         onPause = { vm.pauseRide() },
         onFinish = { confirmFinish = true },
     )
-
-    // Full-screen flash at each change, readable out of the corner of your eye.
-    val flash by vm.flash.collectAsState()
-    flash?.let { cue ->
-        val bg = when (cue) {
-            Cue.SPEED_UP, Cue.LAST_ONE -> Color(0xFFF97316)
-            Cue.EASE_OFF, Cue.COOL_DOWN -> Color(0xFF3B82F6)
-            Cue.ERG_ON, Cue.DONE -> Color(0xFF22C55E)
-        }
-        Box(
-            Modifier.fillMaxSize().background(bg.copy(alpha = 0.92f)).clickable { },
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(cue.phrase.lowercase(), fontFamily = InterTight, fontSize = 80.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.04).em, color = Color.White)
-        }
-    }
 
     if (confirmFinish) {
         AlertDialog(
@@ -215,8 +206,17 @@ fun RideContent(
     onFinish: () -> Unit = {},
 ) {
     val aim = r.targetCadence
-    val pace = paceOf(r.cadence, aim)
-    val palette = paletteFor(pace)
+    val reading = paceOf(r.cadence, aim)
+    val palette = paletteFor(reading.pace)
+    // How much of the current phase is left: the blob shrinks with it and is gone as it ends.
+    val phaseLeft = when {
+        r.inAmnesty -> if (r.amnestyTotal > 0) r.amnestyLeft.toFloat() / r.amnestyTotal else 1f
+        r.planComplete -> 0f
+        r.segmentDuration > 0 -> r.segmentLeft.toFloat() / r.segmentDuration
+        else -> 1f
+    }
+    val phaseKey = if (r.inAmnesty) -2 else r.segmentIndex
+    val ticking = r.state == RideState.RUNNING
 
     val (stepName, stepCount) = when {
         r.state == RideState.WAITING -> "pedal to start" to ""
@@ -235,26 +235,31 @@ fun RideContent(
     Surface(color = Paper, contentColor = Ink, modifier = Modifier.fillMaxSize()) {
       Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 12.dp)) {
-            Row(Modifier.fillMaxWidth().weight(1f)) {
+            BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
+            // Scale the big type to the height available, so everything fits on shorter phones.
+            val k = (maxHeight / 300.dp).coerceIn(0.5f, 1f)
+            val blobMax = minOf(maxHeight * 1.18f, maxWidth * 0.5f)
+            Row(Modifier.fillMaxSize()) {
                 // Left: cadence, the number you control, on its colour signal.
                 Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
-                    CadenceBlob(pace = pace, aim = aim)
+                    CadenceBlob(reading.pace, phaseLeft, phaseKey, ticking, blobMax)
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("rpm", fontFamily = InterTight, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, modifier = Modifier.padding(bottom = 4.dp))
+                        Text("rpm", fontFamily = InterTight, fontWeight = FontWeight.SemiBold, fontSize = (15 * k).sp, modifier = Modifier.padding(bottom = 4.dp))
                         Text(
                             r.cadence?.toString() ?: "–",
-                            fontFamily = InterTight, fontWeight = FontWeight.SemiBold, fontSize = 156.sp,
+                            fontFamily = InterTight, fontWeight = FontWeight.SemiBold, fontSize = (150 * k).sp,
                             letterSpacing = (-0.06).em, style = BigNumber,
                         )
-                        if (aim != null) {
-                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
-                                Text("aim $aim", fontFamily = InterTight, fontWeight = FontWeight.SemiBold, fontSize = 26.sp, letterSpacing = (-0.02).em)
-                                if (palette.word.isNotEmpty()) {
-                                    Text(" · ", fontFamily = InterTight, fontWeight = FontWeight.SemiBold, fontSize = 26.sp)
-                                    Box(Modifier.size(15.dp).background(palette.dot, CircleShape))
-                                    Spacer(Modifier.width(7.dp))
-                                    Text(palette.word, fontFamily = InterTight, fontWeight = FontWeight.SemiBold, fontSize = 26.sp, letterSpacing = (-0.02).em)
-                                }
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = (8 * k).dp)) {
+                            Text(
+                                if (aim != null) "aim $aim" else "no target",
+                                fontFamily = InterTight, fontWeight = FontWeight.SemiBold, fontSize = (26 * k).sp, letterSpacing = (-0.02).em,
+                            )
+                            if (reading.word.isNotEmpty()) {
+                                Text(" · ", fontFamily = InterTight, fontWeight = FontWeight.SemiBold, fontSize = (26 * k).sp)
+                                Box(Modifier.size((15 * k).dp).background(palette.dot, CircleShape))
+                                Spacer(Modifier.width(7.dp))
+                                Text(reading.word, fontFamily = InterTight, fontWeight = FontWeight.SemiBold, fontSize = (26 * k).sp, letterSpacing = (-0.02).em)
                             }
                         }
                     }
@@ -265,14 +270,14 @@ fun RideContent(
                         buildAnnotatedString {
                             append(stepName)
                             if (stepCount.isNotEmpty()) {
-                                withStyle(SpanStyle(fontSize = 16.sp, fontWeight = FontWeight.Medium, letterSpacing = 0.em)) { append("  $stepCount") }
+                                withStyle(SpanStyle(fontSize = (16 * k).sp, fontWeight = FontWeight.Medium, letterSpacing = 0.em)) { append("  $stepCount") }
                             }
                         },
-                        fontFamily = InterTight, fontWeight = FontWeight.SemiBold, fontSize = 36.sp, letterSpacing = (-0.03).em, maxLines = 1,
+                        fontFamily = InterTight, fontWeight = FontWeight.SemiBold, fontSize = (36 * k).sp, letterSpacing = (-0.03).em, maxLines = 1,
                     )
                     Text(
                         Durations.format(countdown),
-                        fontFamily = InterTight, fontWeight = FontWeight.SemiBold, fontSize = 132.sp,
+                        fontFamily = InterTight, fontWeight = FontWeight.SemiBold, fontSize = (132 * k).sp,
                         letterSpacing = (-0.06).em, style = BigNumber,
                     )
                     Text(
@@ -281,9 +286,10 @@ fun RideContent(
                             withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append("${r.power ?: "–"} W") }
                             append(if (r.inAmnesty) " · resistance ${r.amnestyLevelPct}%" else " · target ${r.targetWatts} W")
                         },
-                        fontFamily = InterTight, fontWeight = FontWeight.Medium, fontSize = 24.sp, letterSpacing = (-0.02).em, maxLines = 1,
+                        fontFamily = InterTight, fontWeight = FontWeight.Medium, fontSize = (24 * k).sp, letterSpacing = (-0.02).em, maxLines = 1,
                     )
                 }
+            }
             }
 
             RideGraph(r.segments, r.elapsed, Modifier.fillMaxWidth().height(66.dp).padding(top = 6.dp))
@@ -368,12 +374,12 @@ private fun Pill(
 }
 
 /**
- * The colour blob behind the cadence. Colour = how your cadence compares with the target
- * (cross-fades in 0.3 s); size = the step's target cadence. When the target changes between
- * steps it flickers for a moment, then settles at its new size.
+ * The colour blob behind the cadence. Colour = how close your cadence is to the target
+ * (cross-fades in 0.3 s). Size = how much of the phase is left: it starts big, shrinks as the
+ * phase runs and is gone as it ends; when the next phase starts it bursts back in a flicker.
  */
 @Composable
-fun CadenceBlob(pace: Pace, aim: Int?) {
+fun CadenceBlob(pace: Pace, phaseLeft: Float, phaseKey: Int, ticking: Boolean, maxSize: Dp) {
     val pal = paletteFor(pace)
     val fade = tween<Color>(300)
     val ring by animateColorAsState(pal.ring, fade, label = "ring")
@@ -381,25 +387,34 @@ fun CadenceBlob(pace: Pace, aim: Int?) {
     val core by animateColorAsState(pal.core, fade, label = "core")
     val hot by animateColorAsState(pal.hot, fade, label = "hot")
 
-    val size: Dp = 290.dp * ((aim ?: 85) / 90f).pow(2.2f)
-
-    val flicker = remember { Animatable(1f) }
-    var lastAim by remember { mutableStateOf(aim) }
-    LaunchedEffect(aim) {
-        if (aim != lastAim) {
-            lastAim = aim
-            flicker.snapTo(0f)
-            flicker.animateTo(1f, tween(850, easing = LinearEasing))
+    // Shrink smoothly between the once-a-second updates, aiming at where it will be next second.
+    val shrink = remember { Animatable(phaseLeft.coerceIn(0f, 1f)) }
+    val nova = remember { Animatable(1f) }
+    var lastKey by remember { mutableStateOf(phaseKey) }
+    LaunchedEffect(phaseKey) {
+        if (phaseKey != lastKey) {
+            lastKey = phaseKey
+            shrink.snapTo(1f)
+            nova.snapTo(0f)
+            nova.animateTo(1f, tween(900, easing = LinearEasing))
         }
     }
-    val (scale, alpha) = flickerFrame(flicker.value)
+    LaunchedEffect(phaseLeft, ticking) {
+        if (nova.value < 1f) return@LaunchedEffect
+        if (ticking) shrink.animateTo(phaseLeft.coerceIn(0f, 1f), tween(1000, easing = LinearEasing))
+        else shrink.snapTo(phaseLeft.coerceIn(0f, 1f))
+    }
+    val (novaScale, novaAlpha) = novaFrame(nova.value)
+    // Radius follows a gentle curve so the blob stays readable for most of the phase.
+    val scale = shrink.value.coerceIn(0f, 1f).pow(0.6f) * novaScale
 
     Canvas(
         Modifier
-            .requiredSize(size)
-            .graphicsLayer { scaleX = scale; scaleY = scale; this.alpha = alpha }
+            .requiredSize(maxSize)
+            .graphicsLayer { scaleX = scale; scaleY = scale; alpha = novaAlpha }
             .blur(14.dp, BlurredEdgeTreatment.Unbounded),
     ) {
+        if (scale <= 0.01f) return@Canvas
         val r = this.size.minDimension / 2
         val c = center
         drawCircle(
@@ -429,16 +444,18 @@ fun CadenceBlob(pace: Pace, aim: Int?) {
     }
 }
 
-/** Stepped strobe: jumps between sizes and blinks, then settles. [p] runs 0..1. */
-private fun flickerFrame(p: Float): Pair<Float, Float> = when {
+/** The burst at the start of a phase: grows from nothing past full size in strobing steps, then settles. */
+private fun novaFrame(p: Float): Pair<Float, Float> = when {
     p >= 1f -> 1f to 1f
-    p < 0.12f -> 0.78f to 0.25f
-    p < 0.25f -> 1.10f to 1f
-    p < 0.37f -> 0.86f to 0.35f
-    p < 0.50f -> 1.06f to 1f
-    p < 0.62f -> 0.94f to 0.5f
-    p < 0.80f -> 1.03f to 1f
-    p < 0.95f -> 0.99f to 0.8f
+    p < 0.06f -> 0.12f to 1f
+    p < 0.12f -> 0.30f to 0.25f
+    p < 0.20f -> 0.55f to 1f
+    p < 0.28f -> 0.72f to 0.3f
+    p < 0.38f -> 0.95f to 1f
+    p < 0.48f -> 1.18f to 0.45f
+    p < 0.60f -> 1.12f to 1f
+    p < 0.72f -> 1.05f to 0.6f
+    p < 0.86f -> 1.02f to 1f
     else -> 1f to 1f
 }
 

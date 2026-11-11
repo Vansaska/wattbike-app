@@ -64,6 +64,9 @@ data class RideUi(
     val energyPct: Int,
     val energyKj: Int,
     val plannedKj: Int,
+    val segmentIndex: Int = 0,
+    val segmentDuration: Int = 0,
+    val amnestyTotal: Int = 0,
 )
 
 class MainViewModel(app: Application) : AndroidViewModel(app) {
@@ -249,17 +252,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun testCue(cue: com.vansaska.wattbike.core.Cue) { cues.play(cue, prefs.cueSound, prefs.voiceCues) }
 
-    private val _flash = MutableStateFlow<com.vansaska.wattbike.core.Cue?>(null)
-    /** Cue currently flashed full-screen on the ride screen. */
-    val flash: StateFlow<com.vansaska.wattbike.core.Cue?> = _flash.asStateFlow()
-    private var flashJob: Job? = null
-
     private fun showCue(cue: com.vansaska.wattbike.core.Cue) {
         cues.play(cue, prefs.cueSound, prefs.voiceCues)
-        if (!prefs.flashCues) return
-        _flash.value = cue
-        flashJob?.cancel()
-        flashJob = viewModelScope.launch { delay(2500); _flash.value = null }
     }
 
     /** Writes a ride's recorded data to a file that can be shared. */
@@ -303,6 +297,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             energyPct = s.energyPct,
             energyKj = s.workKj.toInt(),
             plannedKj = s.plannedKj,
+            segmentIndex = s.plan.indexAt(s.elapsed),
+            segmentDuration = s.currentSegment?.duration ?: 0,
+            amnestyTotal = s.amnestySeconds,
         )
     }
 

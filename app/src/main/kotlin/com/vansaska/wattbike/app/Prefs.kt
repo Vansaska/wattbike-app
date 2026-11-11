@@ -68,10 +68,6 @@ class Prefs(context: Context) {
         get() = sp.getString("cueSound", null) ?: "chime"
         set(v) = sp.edit().putString("cueSound", v).apply()
 
-    var flashCues: Boolean
-        get() = sp.getBoolean("flashCues", true)
-        set(v) = sp.edit().putBoolean("flashCues", v).apply()
-
     companion object {
         const val DEFAULT_WORKOUTS_URL =
             "https://raw.githubusercontent.com/Vansaska/wattbike-app/main/workouts/workouts.json"
