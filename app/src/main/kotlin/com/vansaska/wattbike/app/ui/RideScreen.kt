@@ -54,6 +54,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -232,7 +233,7 @@ fun RideContent(
                         Text(
                             r.cadence?.toString() ?: "–",
                             fontFamily = InterTight, fontWeight = FontWeight.SemiBold, fontSize = 170.sp,
-                            letterSpacing = (-0.06).em, lineHeight = 150.sp, fontFeatureSettings = "tnum",
+                            letterSpacing = (-0.06).em, lineHeight = 150.sp, style = TextStyle(fontFeatureSettings = "tnum"),
                         )
                         if (aim != null) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -261,7 +262,7 @@ fun RideContent(
                     Text(
                         Durations.format(countdown),
                         fontFamily = InterTight, fontWeight = FontWeight.SemiBold, fontSize = 132.sp,
-                        letterSpacing = (-0.06).em, lineHeight = 118.sp, fontFeatureSettings = "tnum",
+                        letterSpacing = (-0.06).em, lineHeight = 118.sp, style = TextStyle(fontFeatureSettings = "tnum"),
                     )
                     Text(
                         buildAnnotatedString {
