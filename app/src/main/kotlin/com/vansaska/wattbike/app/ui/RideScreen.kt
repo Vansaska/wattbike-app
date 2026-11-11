@@ -55,6 +55,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -191,6 +193,14 @@ fun RideScreen(vm: MainViewModel) {
     }
 }
 
+/** Big figures: tabular digits, and no extra space above and below the glyphs. */
+private val BigNumber = TextStyle(
+    fontFeatureSettings = "tnum",
+    lineHeight = 0.9.em,
+    platformStyle = PlatformTextStyle(includeFontPadding = false),
+    lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.Both),
+)
+
 private val stepCountRegex = Regex("""^(.*) \((\d+/\d+)\)$""")
 
 /** The ride screen's layout, with no dependency on the view model (also used for screenshots). */
@@ -229,14 +239,14 @@ fun RideContent(
                 Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
                     CadenceBlob(pace = pace, aim = aim)
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("rpm", fontFamily = InterTight, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                        Text("rpm", fontFamily = InterTight, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, modifier = Modifier.padding(bottom = 4.dp))
                         Text(
                             r.cadence?.toString() ?: "–",
-                            fontFamily = InterTight, fontWeight = FontWeight.SemiBold, fontSize = 170.sp,
-                            letterSpacing = (-0.06).em, lineHeight = 150.sp, style = TextStyle(fontFeatureSettings = "tnum"),
+                            fontFamily = InterTight, fontWeight = FontWeight.SemiBold, fontSize = 156.sp,
+                            letterSpacing = (-0.06).em, style = BigNumber,
                         )
                         if (aim != null) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
                                 Text("aim $aim", fontFamily = InterTight, fontWeight = FontWeight.SemiBold, fontSize = 26.sp, letterSpacing = (-0.02).em)
                                 if (palette.word.isNotEmpty()) {
                                     Text(" · ", fontFamily = InterTight, fontWeight = FontWeight.SemiBold, fontSize = 26.sp)
@@ -262,7 +272,7 @@ fun RideContent(
                     Text(
                         Durations.format(countdown),
                         fontFamily = InterTight, fontWeight = FontWeight.SemiBold, fontSize = 132.sp,
-                        letterSpacing = (-0.06).em, lineHeight = 118.sp, style = TextStyle(fontFeatureSettings = "tnum"),
+                        letterSpacing = (-0.06).em, style = BigNumber,
                     )
                     Text(
                         buildAnnotatedString {
@@ -283,7 +293,7 @@ fun RideContent(
                 }
             }
 
-            RideGraph(r.segments, r.elapsed, Modifier.fillMaxWidth().height(78.dp).padding(top = 8.dp))
+            RideGraph(r.segments, r.elapsed, Modifier.fillMaxWidth().height(66.dp).padding(top = 6.dp))
 
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 6.dp)) {
                 Text("energy ${r.energyPct}%", fontFamily = InterTight, fontWeight = FontWeight.Bold, fontSize = 13.sp)
