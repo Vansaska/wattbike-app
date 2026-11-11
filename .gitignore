@@ -5,3 +5,4 @@ local.properties
 *.iml
 .kotlin/
 signing/
+app/src/test/snapshots/
