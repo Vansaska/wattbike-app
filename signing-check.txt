@@ -1,0 +1,3 @@
+password secret set: yes
+decoded keystore bytes: 2588
+keystore opens: yes
