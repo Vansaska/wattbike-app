@@ -247,19 +247,30 @@ fun RideContent(
                         Text("rpm", fontFamily = InterTight, fontWeight = FontWeight.SemiBold, fontSize = (15 * k).sp, modifier = Modifier.padding(bottom = 4.dp))
                         Text(
                             r.cadence?.toString() ?: "–",
-                            fontFamily = InterTight, fontWeight = FontWeight.SemiBold, fontSize = (150 * k).sp,
+                            fontFamily = InterTight, fontWeight = FontWeight.SemiBold, fontSize = (128 * k).sp,
                             letterSpacing = (-0.06).em, style = BigNumber,
                         )
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = (8 * k).dp)) {
+                        // The target: big, since it's what you're steering towards.
+                        Row(modifier = Modifier.padding(top = (6 * k).dp)) {
                             Text(
-                                if (aim != null) "aim $aim" else "no target",
-                                fontFamily = InterTight, fontWeight = FontWeight.SemiBold, fontSize = (26 * k).sp, letterSpacing = (-0.02).em,
+                                if (aim != null) "aim " else "no target",
+                                fontFamily = InterTight, fontWeight = FontWeight.SemiBold, fontSize = (24 * k).sp,
+                                letterSpacing = (-0.02).em, modifier = Modifier.alignByBaseline(),
                             )
-                            if (reading.word.isNotEmpty()) {
-                                Text(" · ", fontFamily = InterTight, fontWeight = FontWeight.SemiBold, fontSize = (26 * k).sp)
-                                Box(Modifier.size((15 * k).dp).background(palette.dot, CircleShape))
+                            if (aim != null) {
+                                Text(
+                                    "$aim",
+                                    fontFamily = InterTight, fontWeight = FontWeight.Bold, fontSize = (60 * k).sp,
+                                    letterSpacing = (-0.04).em, modifier = Modifier.alignByBaseline(),
+                                    style = TextStyle(fontFeatureSettings = "tnum", platformStyle = PlatformTextStyle(includeFontPadding = false)),
+                                )
+                            }
+                        }
+                        if (reading.word.isNotEmpty()) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(Modifier.size((14 * k).dp).background(palette.dot, CircleShape))
                                 Spacer(Modifier.width(7.dp))
-                                Text(reading.word, fontFamily = InterTight, fontWeight = FontWeight.SemiBold, fontSize = (26 * k).sp, letterSpacing = (-0.02).em)
+                                Text(reading.word, fontFamily = InterTight, fontWeight = FontWeight.SemiBold, fontSize = (22 * k).sp, letterSpacing = (-0.02).em)
                             }
                         }
                     }
@@ -396,7 +407,7 @@ fun CadenceBlob(pace: Pace, phaseLeft: Float, phaseKey: Int, ticking: Boolean, m
             lastKey = phaseKey
             shrink.snapTo(1f)
             nova.snapTo(0f)
-            nova.animateTo(1f, tween(900, easing = LinearEasing))
+            nova.animateTo(1f, tween(1200, easing = LinearEasing))
         }
     }
     LaunchedEffect(phaseLeft, ticking) {
@@ -447,15 +458,17 @@ fun CadenceBlob(pace: Pace, phaseLeft: Float, phaseKey: Int, ticking: Boolean, m
 /** The burst at the start of a phase: grows from nothing past full size in strobing steps, then settles. */
 private fun novaFrame(p: Float): Pair<Float, Float> = when {
     p >= 1f -> 1f to 1f
-    p < 0.06f -> 0.12f to 1f
-    p < 0.12f -> 0.30f to 0.25f
-    p < 0.20f -> 0.55f to 1f
-    p < 0.28f -> 0.72f to 0.3f
-    p < 0.38f -> 0.95f to 1f
-    p < 0.48f -> 1.18f to 0.45f
-    p < 0.60f -> 1.12f to 1f
-    p < 0.72f -> 1.05f to 0.6f
-    p < 0.86f -> 1.02f to 1f
+    p < 0.05f -> 0.15f to 1f
+    p < 0.10f -> 0.45f to 0.3f
+    p < 0.16f -> 0.85f to 1f
+    p < 0.22f -> 1.25f to 0.35f
+    p < 0.30f -> 1.65f to 1f
+    p < 0.38f -> 1.95f to 0.5f   // peak: nearly twice full size, spilling across the screen
+    p < 0.46f -> 1.85f to 1f
+    p < 0.55f -> 1.55f to 0.55f
+    p < 0.65f -> 1.30f to 1f
+    p < 0.76f -> 1.12f to 0.75f
+    p < 0.88f -> 1.04f to 1f
     else -> 1f to 1f
 }
 

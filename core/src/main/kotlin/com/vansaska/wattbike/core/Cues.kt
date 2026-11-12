@@ -14,8 +14,8 @@ enum class Cue(val phrase: String) {
 }
 
 object CueRules {
-    /** Seconds before a change that the cue is spoken, so it lands as the change happens. */
-    const val LEAD_SECONDS = 2
+    /** The cue sounds in the last second of a phase, so it lands as the phase ends. */
+    const val LEAD_SECONDS = 1
 
     /** Which cue (if any) announces the move from [cur] to [next] in [plan]. */
     fun cueFor(plan: Plan, curIndex: Int): Cue? {

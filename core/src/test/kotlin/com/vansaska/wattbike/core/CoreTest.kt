@@ -181,8 +181,8 @@ class CoreTest {
             listOf(Cue.ERG_ON, Cue.SPEED_UP, Cue.EASE_OFF, Cue.LAST_ONE, Cue.EASE_OFF, Cue.COOL_DOWN, Cue.DONE),
             cues.map { it.second },
         )
-        // Cues come just before each change (150 s = first change).
-        assertTrue(cues[1].first in 147..149, "speed-up cue at ${cues[1].first}")
+        // Cues come in the last second before each change (150 s = first change).
+        assertTrue(cues[1].first == 149, "speed-up cue at ${cues[1].first}")
         assertTrue(s.energyPct in 1..200)
         assertTrue(abs(w.toSegments().kilojoules(200) - s.plannedKj) <= 3, "planned ${s.plannedKj}")
         // Energy is measured against the plan at the intensity actually ridden.
